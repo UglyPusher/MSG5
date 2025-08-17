@@ -1,0 +1,62 @@
+# VS IDE/IntelliSense
+.vs/
+*.VC.db
+*.VC.opendb
+ipch/
+
+# Конфигурации сборки
+Debug/
+Release/
+x64/
+x86/
+arm64/
+out/
+bin/
+obj/
+*.obj
+*.pdb
+*.ilk
+*.tlog
+*.log
+*.idb
+*.iobj
+*.ipdb
+
+# Файлы пользователя/IDE
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Кэш, пакеты
+packages/
+.vscode/
+*.cache/
+*.tmp
+
+# CMake (если появится)
+CMakeSettings.json
+CMakeCache.txt
+CMakeFiles/
+cmake-build-*/
+
+# Автосгенерённые
+*.generated.*
+
+# Не тащим сторонние DLL/EXE из Program Files
+# (они подхватываются пост-билдом, а не коммитом)
+*.dll
+*.exe
+
+# Но оставим наш exe под релиз? Лучше нет — артефакты сборки в релизы CI
+# !x64/Release/MSG5_Client.exe
+# !x64/Release/MSG5_Admin.exe
+
+# Секреты и локальные конфиги
+config/*.json
+!config/admin.json.sample
+!config/user.json.sample
+
+# Бекапы
+*.bak
+*.old

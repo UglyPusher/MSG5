@@ -1,0 +1,20 @@
+* text=auto
+*.sln      eol=crlf
+*.vcxproj  eol=crlf
+*.filters  eol=crlf
+*.props    eol=crlf
+*.h        eol=lf
+*.hpp      eol=lf
+*.c        eol=lf
+*.cpp      eol=lf
+*.json     eol=lf
+*.sql      eol=lf
+*.bat      eol=crlf
+*.ps1      eol=crlf
+
+# Бинарники
+*.png binary
+*.jpg binary
+*.dll binary
+*.lib binary
+*.pdb binary
