@@ -64,13 +64,12 @@ void HttpServer::initRoutes() {
         });
 }
 
-HttpServer::HttpServer(const ConfigLoader& config) {
-    port = config.getInt("server_port", 8080);
-}
+HttpServer::HttpServer(int port)
+    : port_(port) {}
 
 void HttpServer::start() {
-    std::cout << "Server started at http://localhost:" << port << std::endl;
-    server.listen("0.0.0.0", port);
+    std::cout << "Server started at http://localhost:" << port_ << std::endl;
+    server.listen("0.0.0.0", port_);
 }
 
 void HttpServer::subscribe(const std::string& method,
@@ -85,4 +84,60 @@ void HttpServer::subscribe(const std::string& method,
     else {
         std::cerr << "[WARN] Unsupported HTTP method for path: " << path << std::endl;
     }
+}
+
+// HttpServer.cpp
+void HttpServer::addReadyCheck(std::string name, ReadyCheck fn, bool critical) {
+    readyChecks_.push_back(ReadyCheckItem{ std::move(name), std::move(fn), critical });
+}
+
+void HttpServer::mountSystemRoutes() {
+    // liveness Ч процесс жив
+    subscribe("GET", "/healthz", [](const httplib::Request&, httplib::Response& res) {
+        res.status = 200; res.set_content("OK", "text/plain");
+        });
+    subscribe("GET", "/livez", [](const httplib::Request&, httplib::Response& res) {
+        res.status = 200; res.set_content("OK", "text/plain");
+        });
+
+    // readiness Ч агрегируем зарегистрированные проверки
+    subscribe("GET", "/readyz", [this](const httplib::Request&, httplib::Response& res) {
+        nlohmann::json j = nlohmann::json::array();
+        bool all_ok = true, all_critical_ok = true;
+        for (auto& c : readyChecks_) {
+            std::string msg;
+            bool ok = false;
+            try { ok = c.fn(msg); }
+            catch (const std::exception& e) { msg = e.what(); ok = false; }
+            j.push_back({ {"name", c.name}, {"ok", ok}, {"critical", c.critical}, {"msg", msg} });
+            all_ok &= ok;
+            if (c.critical) all_critical_ok &= ok;
+        }
+        res.status = all_critical_ok ? 200 : 503;
+        res.set_content(nlohmann::json{
+            {"ok", all_ok},
+            {"all_critical_ok", all_critical_ok},
+            {"checks", j}
+            }.dump(), "application/json");
+        });
+
+    // статус Ч быстрый JSON без т€жЄлых вызовов
+    subscribe("GET", "/status", [this](const httplib::Request&, httplib::Response& res) {
+        nlohmann::json j{
+            {"ok", true},
+            {"port", port_},
+            {"pid", static_cast<int>(::GetCurrentProcessId())} // под Windows; или убери
+        };
+        res.status = 200; res.set_content(j.dump(), "application/json");
+        });
+    subscribe("GET", "/status",
+        [this](const httplib::Request&, httplib::Response& res) {
+            nlohmann::json j = {
+                {"ok", true},
+                {"app", appId_},   // ? добавить
+                {"port", port_}
+            };
+            res.status = 200;
+            res.set_content(j.dump(), "application/json");
+        });
 }

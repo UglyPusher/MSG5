@@ -1,28 +1,35 @@
-﻿#include "pch.h"
+﻿#include "Config/ConfigLoader.h"
+#include "Config/BasicConfig.h"
 #include "HttpServer.h"
-#include "ConfigLoader.h"
 #include <iostream>
 
 int main(int argc, char** argv) {
     try {
-        // по умолчанию ищем рядом с решением: MSG5\config\admin.json
-        std::string cfgPath = R"(..\..\config\admin.json)";
-        if (argc > 1) cfgPath = argv[1];             // можно передать путь как 1-й аргумент
+        namespace fs = std::filesystem;
+        // 1) Явно резолвим путь, чтобы залогировать его
+        fs::path cfgPath = msg5::ConfigLoader::ResolvePath(
+            argc, argv,
+            "MSG5_ADMIN_CONFIG",
+            "..\\..\\config\\admin.json"
+        );
+        msg5::ConfigLoader raw(argc, argv, "MSG5_ADMIN_CONFIG", "..\\..\\config\\admin.json");
 
-        ConfigLoader cfg(cfgPath);                    // <— НУЖЕН путь
-        HttpServer srv(cfg);
+        msg5::config::BasicConfig cfg;
+        cfg.from_json(raw.root());
+        cfg.apply_env_overrides();
+        cfg.validate();
 
+        // 4) Лог старта
+        std::cout << "[boot] config=" << cfgPath.string()
+            << "\n[boot] baseDir=" << raw.baseDir().string()
+            << "\n[boot] listen=0.0.0.0:" << cfg.server_port << "\n";
+
+        HttpServer srv(cfg.server_port);
+
+        srv.setAppId("admin");
+        
         srv.initRoutes();
-
-        srv.subscribe("GET", "/healthz",
-            [](const httplib::Request&, httplib::Response& res) {
-                res.status = 200; res.set_content("OK", "text/plain");
-            });
-
-        srv.subscribe("POST", "/admin/bootstrap/ping",
-            [](const httplib::Request&, httplib::Response& res) {
-                res.status = 200; res.set_content(R"({"ok":true})", "application/json");
-            });
+        srv.mountSystemRoutes(); // ← системные
 
         srv.start();
     }

@@ -1,28 +1,35 @@
-﻿#include "pch.h"
-#include "HttpServer.h"
-#include "ConfigLoader.h"
+﻿#include "HttpServer.h"
+#include "Config/ConfigLoader.h"
+#include "Config/BasicConfig.h"
 #include <iostream>
+#include <filesystem>
 
 int main(int argc, char** argv) {
     try {
-        std::string cfgPath = R"(..\..\config\user.json)";
-        if (argc > 1) cfgPath = argv[1];
+        namespace fs = std::filesystem;
 
-        ConfigLoader cfg(cfgPath);        // <— НУЖЕН путь
-        HttpServer srv(cfg);
+        fs::path cfgPath = msg5::ConfigLoader::ResolvePath(
+            argc, argv,
+            "MSG5_CLIENT_CONFIG",
+            "..\\..\\config\\user.json"
+        );
+
+        msg5::ConfigLoader raw(cfgPath.string());
+
+        msg5::config::BasicConfig cfg;
+        cfg.from_json(raw.root());
+        cfg.apply_env_overrides();
+        cfg.validate();
+
+        std::cout << "[boot] config=" << cfgPath.string()
+            << "\n[boot] baseDir=" << raw.baseDir().string()
+            << "\n[boot] listen=0.0.0.0:" << cfg.server_port << "\n";
+
+        HttpServer srv(cfg.server_port);
+        srv.setAppId("client");
 
         srv.initRoutes();
-
-        srv.subscribe("GET", "/healthz",
-            [](const httplib::Request&, httplib::Response& res) {
-                res.status = 200; res.set_content("OK", "text/plain");
-            });
-
-        srv.subscribe("GET", "/api/ping",
-            [](const httplib::Request&, httplib::Response& res) {
-                res.status = 200; res.set_content(R"({"pong":"ok"})", "application/json");
-            });
-
+        srv.mountSystemRoutes();
         srv.start();
     }
     catch (const std::exception& e) {
