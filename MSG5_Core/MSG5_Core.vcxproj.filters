@@ -51,6 +51,9 @@
     <ClInclude Include="Config\ConfigLoader.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="..\third_party\msg5_http.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MSG5_Core.cpp">

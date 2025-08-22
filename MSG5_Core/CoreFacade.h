@@ -1,6 +1,6 @@
 #pragma once
-#include "json.hpp"
-#include "httplib.h"
+#include <nlohmann/json.hpp>
+#include <msg5_http.h>
 
 class CoreFacade {
 public:

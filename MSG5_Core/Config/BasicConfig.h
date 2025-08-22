@@ -1,6 +1,6 @@
 // MSG5_Core/Config/BasicConfig.h
 #pragma once
-#include "../json.hpp"
+#include <nlohmann/json.hpp>
 
 namespace msg5::config {
 

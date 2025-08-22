@@ -51,7 +51,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>C:\Users\днс\source\repos\MSG5\MSG5_Core;D:\dev\libpqxx\include;$(SolutionDir)MSG5_Core;C:\Program Files\PostgreSQL\16\include;C:\Program Files\OpenSSL-Win64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\днс\source\repos\MSG5\third_party;C:\Users\днс\source\repos\MSG5\MSG5_Core;D:\dev\libpqxx\include;$(SolutionDir)MSG5_Core;C:\Program Files\PostgreSQL\16\include;C:\Program Files\OpenSSL-Win64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -87,7 +87,7 @@ if exist "D:\dev\libpqxx\build\src\$(Configuration)\pqxx.dll" xcopy /Y /D "D:\de
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>C:\Users\днс\source\repos\MSG5\MSG5_Core;D:\dev\libpqxx\include;$(SolutionDir)MSG5_Core;C:\Program Files\PostgreSQL\16\include;C:\Program Files\OpenSSL-Win64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\днс\source\repos\MSG5\third_party;C:\Users\днс\source\repos\MSG5\MSG5_Core;D:\dev\libpqxx\include;$(SolutionDir)MSG5_Core;C:\Program Files\PostgreSQL\16\include;C:\Program Files\OpenSSL-Win64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

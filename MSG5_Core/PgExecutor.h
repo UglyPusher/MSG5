@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 #include "SessionContext.h"
 
 // forward-declare, чтобы не тянуть pqxx в заголовок

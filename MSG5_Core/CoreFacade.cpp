@@ -33,7 +33,7 @@ void CoreFacade::route(const std::string& method,
     try {
         input = json::parse(req.body);
     }
-    catch (const std::exception& e) {
+    catch ([[maybe_unused]] const std::exception& e) {
         json error = {
             {"success", false},
             {"message", "Invalid JSON"},

@@ -53,7 +53,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>D:\dev\libpqxx\build\include;D:\dev\libpqxx\include;$(SolutionDir)Core;C:\Program Files\PostgreSQL\15\include;C:\Program Files\OpenSSL-Win64\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\днс\source\repos\MSG5\third_party;D:\dev\libpqxx\build\include;D:\dev\libpqxx\include;$(SolutionDir)Core;C:\Program Files\PostgreSQL\15\include;C:\Program Files\OpenSSL-Win64\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -77,7 +77,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>D:\dev\libpqxx\build\include;D:\dev\libpqxx\include;$(SolutionDir)Core;C:\Program Files\PostgreSQL\15\include;C:\Program Files\OpenSSL-Win64\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\днс\source\repos\MSG5\third_party;D:\dev\libpqxx\build\include;D:\dev\libpqxx\include;$(SolutionDir)Core;C:\Program Files\PostgreSQL\15\include;C:\Program Files\OpenSSL-Win64\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -92,6 +92,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\third_party\msg5_http.h" />
     <ClInclude Include="Config\BasicConfig.h" />
     <ClInclude Include="Config\ConfigLoader.h" />
     <ClInclude Include="CoreFacade.h" />
