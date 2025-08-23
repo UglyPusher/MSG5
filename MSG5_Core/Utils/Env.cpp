@@ -1,4 +1,4 @@
-#include "pch.h"
+п»ї#include "pch.h"
 #include "Env.h"
 #include <cstdlib>   // std::getenv
 #include <string>
@@ -7,7 +7,7 @@ namespace msg5::utils {
 
     std::optional<std::string> getenv_str(const char* name) {
 #ifdef _WIN32
-        // Безопасное копирование для Windows (во избежание гонок со статическим буфером)
+        // Р‘РµР·РѕРїР°СЃРЅРѕРµ РєРѕРїРёСЂРѕРІР°РЅРёРµ РґР»СЏ Windows (РІРѕ РёР·Р±РµР¶Р°РЅРёРµ РіРѕРЅРѕРє СЃРѕ СЃС‚Р°С‚РёС‡РµСЃРєРёРј Р±СѓС„РµСЂРѕРј)
         char* buf = nullptr;
         size_t sz = 0;
         if (_dupenv_s(&buf, &sz, name) == 0 && buf != nullptr) {

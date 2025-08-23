@@ -1,6 +1,7 @@
 ﻿#include "HttpServer.h"
 #include "Config/ConfigLoader.h"
 #include "Config/BasicConfig.h"
+#include "ClientRoutes.h"
 #include <iostream>
 #include <filesystem>
 
@@ -26,10 +27,9 @@ int main(int argc, char** argv) {
             << "\n[boot] listen=0.0.0.0:" << cfg.server_port << "\n";
 
         HttpServer srv(cfg.server_port);
-        srv.setAppId("client");
-
         srv.initRoutes();
         srv.mountSystemRoutes();
+        msg5::client::RegisterClientApiRoutes(srv);
         srv.start();
     }
     catch (const std::exception& e) {

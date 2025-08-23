@@ -1,9 +1,14 @@
-// MSG5_Core/ThirdParty/Http.h
+п»ї// MSG5_Core/ThirdParty/Http.h
 #pragma once
-// ВАЖНО: дефайны должны быть ДО инклюда httplib.h
-// Включить TLS (если нужен)
+// Р’РђР–РќРћ: РґРµС„Р°Р№РЅС‹ РґРѕР»Р¶РЅС‹ Р±С‹С‚СЊ Р”Рћ РёРЅРєР»СЋРґР° httplib.h
+// Р’РєР»СЋС‡РёС‚СЊ TLS (РµСЃР»Рё РЅСѓР¶РµРЅ)
 ////#define CPPHTTPLIB_OPENSSL_SUPPORT
-// Включить сжатие (если нужно)
+// Р’РєР»СЋС‡РёС‚СЊ СЃР¶Р°С‚РёРµ (РµСЃР»Рё РЅСѓР¶РЅРѕ)
 //// #define CPPHTTPLIB_ZLIB_SUPPORT
 
+#pragma warning(push)
+#pragma warning(disable: 6262 26495 26819 28020) // С‡С‚Рѕ С€СѓРјРёС‚ Сѓ MSVC/CA
+
 #include <cpp-httplib/httplib.h>
+
+#pragma warning(pop)

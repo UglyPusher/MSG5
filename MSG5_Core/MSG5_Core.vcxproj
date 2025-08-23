@@ -54,6 +54,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <AdditionalIncludeDirectories>C:\Users\днс\source\repos\MSG5\third_party;D:\dev\libpqxx\build\include;D:\dev\libpqxx\include;$(SolutionDir)Core;C:\Program Files\PostgreSQL\15\include;C:\Program Files\OpenSSL-Win64\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -78,6 +79,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <AdditionalIncludeDirectories>C:\Users\днс\source\repos\MSG5\third_party;D:\dev\libpqxx\build\include;D:\dev\libpqxx\include;$(SolutionDir)Core;C:\Program Files\PostgreSQL\15\include;C:\Program Files\OpenSSL-Win64\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -95,7 +97,6 @@
     <ClInclude Include="..\third_party\msg5_http.h" />
     <ClInclude Include="Config\BasicConfig.h" />
     <ClInclude Include="Config\ConfigLoader.h" />
-    <ClInclude Include="CoreFacade.h" />
     <ClInclude Include="httplib.h" />
     <ClInclude Include="HttpServer.h" />
     <ClInclude Include="json.hpp" />
@@ -109,7 +110,6 @@
   <ItemGroup>
     <ClCompile Include="Config\BasicConfig.cpp" />
     <ClCompile Include="Config\ConfigLoader.cpp" />
-    <ClCompile Include="CoreFacade.cpp" />
     <ClCompile Include="HttpServer.cpp" />
     <ClCompile Include="MSG5_Core.cpp" />
     <ClCompile Include="pch.cpp">

@@ -1,13 +1,13 @@
-#pragma once
+п»ї#pragma once
 #include <optional>
 #include <string>
 
 namespace msg5::utils {
 
-	// Возвращает значение переменной окружения как std::string,
-	// или std::nullopt, если переменная не установлена.
+	// Р’РѕР·РІСЂР°С‰Р°РµС‚ Р·РЅР°С‡РµРЅРёРµ РїРµСЂРµРјРµРЅРЅРѕР№ РѕРєСЂСѓР¶РµРЅРёСЏ РєР°Рє std::string,
+	// РёР»Рё std::nullopt, РµСЃР»Рё РїРµСЂРµРјРµРЅРЅР°СЏ РЅРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅР°.
 	//
-	// Пример:
+	// РџСЂРёРјРµСЂ:
 	//   if (auto v = msg5::utils::getenv_str("MSG5_APP_DSN")) cfg.app_dsn = *v;
 	std::optional<std::string> getenv_str(const char* name);
 

@@ -1,11 +1,10 @@
-#include "pch.h"
-#include "CoreFacade.h"
+ï»¿#include "APIFacade.h"
 #include <iostream>
 #include "SessionContext.h"
-
+ 
 using json = nlohmann::json;
 
-void CoreFacade::route(const std::string& method,
+void APIFacade::route(const std::string& method,
     const httplib::Request& req,
     httplib::Response& res) {
     std::string token;
@@ -21,13 +20,13 @@ void CoreFacade::route(const std::string& method,
             {"error_uid", nullptr}
         };
         res.status = 401;
-        res.set_content(error.dump(2), "application/json");
+        res.set_content(error.dump(2), "application/json; charset=utf-8");
         return;
     }
 
     SessionContext context(token);
     
-    std::cout << "[CoreFacade] Routing method: " << method << std::endl;
+    std::cout << "[ClientAPIFacade] Routing method: " << method << std::endl;
 
     json input;
     try {
@@ -41,36 +40,36 @@ void CoreFacade::route(const std::string& method,
             {"error_uid", nullptr}
         };
         res.status = 400;
-        res.set_content(error.dump(2), "application/json");
+        res.set_content(error.dump(2), "application/json; charset=utf-8");
         return;
     }
 
-    // Çàãëóøêà: âîçâðàùàåì ìåòîä + âõîäíûå äàííûå
+    // Ð—Ð°Ð³Ð»ÑƒÑˆÐºÐ°: Ð²Ð¾Ð·Ð²Ñ€Ð°Ñ‰Ð°ÐµÐ¼ Ð¼ÐµÑ‚Ð¾Ð´ + Ð²Ñ…Ð¾Ð´Ð½Ñ‹Ðµ Ð´Ð°Ð½Ð½Ñ‹Ðµ
     json response = {
         {"success", true},
         {"method", method},
         {"data", input}
     };
-    res.set_content(response.dump(2), "application/json");
+    res.set_content(response.dump(2), "application/json; charset=utf-8");
 }
 
-std::string CoreFacade::version() {
-    return "v1.0.0-core";  // èëè GIT_TAG/BUILD_ID
+std::string APIFacade::version() {
+    return "v1.0.0-core";  // Ð¸Ð»Ð¸ GIT_TAG/BUILD_ID
 }
 
-nlohmann::json CoreFacade::describeApi() const {
+nlohmann::json APIFacade::describeApi() const {
     using json = nlohmann::json;
 
     return {
         {"version", version()},
         {"methods", {
-            {"doc_save", "Ñîõðàíèòü äîêóìåíò"},
-            {"doc_post", "Ïðîâåñòè äîêóìåíò"},
-            {"doc_unpost", "Îòìåíèòü ïðîâåäåíèå"},
-            {"shift_open", "Îòêðûòü ñìåíó"},
-            {"shift_close", "Çàêðûòü ñìåíó"},
-            {"get_user_profile", "Ïðîôèëü òåêóùåãî ïîëüçîâàòåëÿ"}
+            {"doc_save", "Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ Ð´Ð¾ÐºÑƒÐ¼ÐµÐ½Ñ‚"},
+            {"doc_post", "ÐŸÑ€Ð¾Ð²ÐµÑÑ‚Ð¸ Ð´Ð¾ÐºÑƒÐ¼ÐµÐ½Ñ‚"},
+            {"doc_unpost", "ÐžÑ‚Ð¼ÐµÐ½Ð¸Ñ‚ÑŒ Ð¿Ñ€Ð¾Ð²ÐµÐ´ÐµÐ½Ð¸Ðµ"},
+            {"shift_open", "ÐžÑ‚ÐºÑ€Ñ‹Ñ‚ÑŒ ÑÐ¼ÐµÐ½Ñƒ"},
+            {"shift_close", "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ ÑÐ¼ÐµÐ½Ñƒ"},
+            {"get_user_profile", "ÐŸÑ€Ð¾Ñ„Ð¸Ð»ÑŒ Ñ‚ÐµÐºÑƒÑ‰ÐµÐ³Ð¾ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ"}
         }},
-        {"notes", "Âñå ìåòîäû âûçûâàþòñÿ ÷åðåç POST ñ JSON-òåëîì"}
+        {"notes", "Ð’ÑÐµ Ð¼ÐµÑ‚Ð¾Ð´Ñ‹ Ð²Ñ‹Ð·Ñ‹Ð²Ð°ÑŽÑ‚ÑÑ Ñ‡ÐµÑ€ÐµÐ· POST Ñ JSON-Ñ‚ÐµÐ»Ð¾Ð¼"}
     };
 }

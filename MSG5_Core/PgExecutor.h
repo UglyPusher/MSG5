@@ -1,24 +1,24 @@
-#pragma once
+п»ї#pragma once
 #include <memory>
 #include <string>
 #include <nlohmann/json.hpp>
 #include "SessionContext.h"
 
-// forward-declare, чтобы не тянуть pqxx в заголовок
+// forward-declare, С‡С‚РѕР±С‹ РЅРµ С‚СЏРЅСѓС‚СЊ pqxx РІ Р·Р°РіРѕР»РѕРІРѕРє
 namespace pqxx { class connection; }
 
 class PgExecutor {
 public:
-    // conninfo: "postgresql://user:pass@host:port/dbname" или "host=... dbname=... user=..."
+    // conninfo: "postgresql://user:pass@host:port/dbname" РёР»Рё "host=... dbname=... user=..."
     explicit PgExecutor(const std::string& conninfo);
     ~PgExecutor();
 
-    // Универсальный JSON-вызов: SELECT <schema.fn>($1::jsonb)::jsonb
+    // РЈРЅРёРІРµСЂСЃР°Р»СЊРЅС‹Р№ JSON-РІС‹Р·РѕРІ: SELECT <schema.fn>($1::jsonb)::jsonb
     nlohmann::json callJson(const std::string& qualified_name,
         const nlohmann::json& payload,
         const SessionContext& context);
 
-    // Текстовый вызов с 1 int-параметром (пример: meta.generate_sp_ddl(:id) -> TEXT)
+    // РўРµРєСЃС‚РѕРІС‹Р№ РІС‹Р·РѕРІ СЃ 1 int-РїР°СЂР°РјРµС‚СЂРѕРј (РїСЂРёРјРµСЂ: meta.generate_sp_ddl(:id) -> TEXT)
     std::string callText1Int(const std::string& qualified_name,
         int id,
         const SessionContext& context);

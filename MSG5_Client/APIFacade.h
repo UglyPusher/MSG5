@@ -2,7 +2,7 @@
 #include <nlohmann/json.hpp>
 #include <msg5_http.h>
 
-class CoreFacade {
+class APIFacade {
 public:
     void route(const std::string& method,
         const httplib::Request& req,

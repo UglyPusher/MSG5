@@ -1,4 +1,4 @@
-#include "pch.h"
+п»ї#include "pch.h"
 #include "Config/ConfigLoader.h"
 #include "Utils/Env.h"
 #include <fstream>
@@ -9,7 +9,7 @@ namespace fs = std::filesystem;
 
 namespace msg5 {
 
-    // --- публичные конструкторы/методы ---
+    // --- РїСѓР±Р»РёС‡РЅС‹Рµ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂС‹/РјРµС‚РѕРґС‹ ---
     ConfigLoader::ConfigLoader(const std::string& path) {
         loadFromFile(path);
     }
@@ -29,12 +29,12 @@ namespace msg5 {
         return resolvePathImpl(argc, argv, env_name, default_rel);
     }
 
-    // --- приватная реализация резолва пути (внутри класса) ---
+    // --- РїСЂРёРІР°С‚РЅР°СЏ СЂРµР°Р»РёР·Р°С†РёСЏ СЂРµР·РѕР»РІР° РїСѓС‚Рё (РІРЅСѓС‚СЂРё РєР»Р°СЃСЃР°) ---
     fs::path ConfigLoader::resolvePathImpl(int argc, char** argv,
         const char* env_name,
         const fs::path& default_rel)
     {
-        // 1) CLI аргумент
+        // 1) CLI Р°СЂРіСѓРјРµРЅС‚
         if (argc >= 2 && argv && argv[1] && argv[1][0]) {
             fs::path p = argv[1];
             if (fs::exists(p)) return p;
@@ -50,7 +50,7 @@ namespace msg5 {
             }
         }
 
-        // 3) Дефолтный относительный путь от текущей CWD (в VS это x64\\(Debug|Release))
+        // 3) Р”РµС„РѕР»С‚РЅС‹Р№ РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅС‹Р№ РїСѓС‚СЊ РѕС‚ С‚РµРєСѓС‰РµР№ CWD (РІ VS СЌС‚Рѕ x64\\(Debug|Release))
         fs::path p = fs::current_path() / default_rel;
         if (fs::exists(p)) return p;
 
@@ -60,7 +60,7 @@ namespace msg5 {
             ", or place file at: " + p.string());
     }
 
-    // --- остальное ---
+    // --- РѕСЃС‚Р°Р»СЊРЅРѕРµ ---
     void ConfigLoader::loadFromFile(const fs::path& p) {
         std::ifstream ifs(p, std::ios::binary);
         if (!ifs) throw std::runtime_error("Cannot open config: " + p.string());
