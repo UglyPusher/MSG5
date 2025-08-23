@@ -1,7 +1,7 @@
 ﻿#include "APIFacade.h"
 #include <iostream>
 #include "SessionContext.h"
- 
+
 using json = nlohmann::json;
 
 void APIFacade::route(const std::string& method,
@@ -25,23 +25,45 @@ void APIFacade::route(const std::string& method,
     }
 
     SessionContext context(token);
-    
+
     std::cout << "[ClientAPIFacade] Routing method: " << method << std::endl;
 
-    json input;
-    try {
-        input = json::parse(req.body);
+    // Требуем корректный Content-Type, если тело непустое. Пустое тело допускаем как {}.
+    if (!req.body.empty()) {
+        if (!req.has_header("Content-Type") ||
+            req.get_header_value("Content-Type").find("application/json") == std::string::npos) {
+            json error = {
+            {"success", false},
+            {"message", "Unsupported Media Type: expected application/json"},
+            {"error_code", "unsupported_media_type"},
+            {"error_uid", nullptr}
+            };
+            res.status = 415;
+            res.set_content(error.dump(2), "application/json; charset=utf-8");
+            return;
+        }
     }
-    catch ([[maybe_unused]] const std::exception& e) {
-        json error = {
+    json input;
+    if (req.body.empty()) {
+        input = json::object();
+
+    }
+    else {
+        try {
+            input = json::parse(req.body);
+        }
+        catch ([[maybe_unused]] const std::exception& e) {
+            json error = {
             {"success", false},
             {"message", "Invalid JSON"},
             {"error_code", "invalid_json"},
             {"error_uid", nullptr}
-        };
-        res.status = 400;
-        res.set_content(error.dump(2), "application/json; charset=utf-8");
-        return;
+            };
+            res.status = 400;
+            res.set_content(error.dump(2), "application/json; charset=utf-8");
+            return;
+        }
+
     }
 
     // Заглушка: возвращаем метод + входные данные
@@ -68,7 +90,8 @@ nlohmann::json APIFacade::describeApi() const {
             {"doc_unpost", "Отменить проведение"},
             {"shift_open", "Открыть смену"},
             {"shift_close", "Закрыть смену"},
-            {"get_user_profile", "Профиль текущего пользователя"}
+            {"get_user_profile", "Профиль текущего пользователя"},
+            {"db_version", "Версия Postgres (GET /api/db/version, POST /api/v1/db_version)"}
         }},
         {"notes", "Все методы вызываются через POST с JSON-телом"}
     };

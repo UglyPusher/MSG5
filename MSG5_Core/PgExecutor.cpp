@@ -47,6 +47,17 @@ void PgExecutor::ensureConnected() const {
         throw std::runtime_error("PG connection is not open");
 }
 
+std::string PgExecutor::scalar(const std::string & sql) {
+    ensureConnected();
+    pqxx::work tx{ *conn };
+    auto r = tx.exec(sql); // без параметров
+    std::string out;
+    if (!r.empty() && r.columns() > 0 && !r[0][0].is_null())
+         out = r[0][0].as<std::string>("");
+    tx.commit();
+    return out;
+}
+
 void PgExecutor::ensureSafeFunctionName(const std::string& qn) {
     // Разрешаем только meta.* и sys.*; имя функции — [a-z][a-z0-9_]*
     static const std::regex re(R"(^(meta|sys)\.[a-z][a-z0-9_]*$)");

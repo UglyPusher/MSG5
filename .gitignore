@@ -63,3 +63,5 @@ config/*.json
 
 rnd/*.md
 rnd/*.txt
+
+tmp/*.*

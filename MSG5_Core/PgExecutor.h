@@ -23,6 +23,10 @@ public:
         int id,
         const SessionContext& context);
 
+    // Простой SELECT, вернуть первую ячейку (row0,col0) как текст.
+        // NULL или отсутствие строк → пустая строка.
+        std::string scalar(const std::string & sql);
+
 private:
     std::unique_ptr<pqxx::connection> conn;
 
