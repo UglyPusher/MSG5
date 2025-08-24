@@ -5,6 +5,7 @@
 #include "PgExecutor.h"
 #include "ClientConfig.h"
 #include <memory>
+#include <cstdlib> // std::getenv
 
 namespace msg5::config { struct ClientConfig; }
 namespace msg5::client {
@@ -12,6 +13,31 @@ namespace msg5::client {
     void RegisterClientApiRoutes(HttpServer& srv, const msg5::config::ClientConfig& cfg) {
         auto facade = std::make_shared<APIFacade>();
 
+        // Критичный readiness-чек Postgres
+            srv.addReadyCheck(
+                "postgres",
+                [dsn = cfg.pg_dsn](std::string& msg) -> bool {
+                    const char* use = !dsn.empty() ? dsn.c_str() : std::getenv("MSG5_PG_DSN");
+                    if (!use || !*use) { msg = "PG DSN not configured"; return false; }
+                     try {
+                        PgExecutor pg{ use };
+                        auto val = pg.scalar("select 1");
+                        if (val != "1") { msg = "unexpected scalar=" + val; return false; }
+                        msg = "ok";
+                        return true;
+                    }
+                    catch (const std::exception& e) {
+                        msg = e.what();
+                        return false;
+                    }
+                    catch (...) {
+                        msg = "unknown error";
+                        return false;
+                    }
+                    },
+                /*critical=*/true
+                );
+        
         // Описание API (без авторизации)
         srv.subscribe("GET", "/api/describe",
             [facade](const httplib::Request&, httplib::Response& res) {
