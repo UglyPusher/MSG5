@@ -121,6 +121,7 @@ if exist "D:\dev\libpqxx\build\src\$(Configuration)\pqxx.dll" xcopy /Y /D "D:\de
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="APIFacade.cpp" />
+    <ClCompile Include="ClientConfig.cpp" />
     <ClCompile Include="ClientRoutes.cpp" />
     <ClCompile Include="MSG5_Client.cpp" />
   </ItemGroup>
@@ -131,6 +132,7 @@ if exist "D:\dev\libpqxx\build\src\$(Configuration)\pqxx.dll" xcopy /Y /D "D:\de
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="APIFacade.h" />
+    <ClInclude Include="ClientConfig.h" />
     <ClInclude Include="ClientRoutes.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

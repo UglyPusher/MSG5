@@ -24,12 +24,18 @@
     <ClCompile Include="ClientRoutes.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="ClientConfig.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="APIFacade.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="ClientRoutes.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="ClientConfig.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>

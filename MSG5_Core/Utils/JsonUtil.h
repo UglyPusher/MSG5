@@ -1,13 +1,13 @@
-#pragma once
+п»ї#pragma once
 #include <string>
 #include <string_view>
 
 namespace msg5::json {
 
-    // Экранирует строку по JSON-правилам (без внешних кавычек)
+    // Р­РєСЂР°РЅРёСЂСѓРµС‚ СЃС‚СЂРѕРєСѓ РїРѕ JSON-РїСЂР°РІРёР»Р°Рј (Р±РµР· РІРЅРµС€РЅРёС… РєР°РІС‹С‡РµРє)
     std::string Escape(std::string_view s);
 
-    // Возвращает строку уже в кавычках:  "...\u000a..."
+    // Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃС‚СЂРѕРєСѓ СѓР¶Рµ РІ РєР°РІС‹С‡РєР°С…:  "...\u000a..."
     inline std::string Quote(std::string_view s) {
         std::string out = "\"";
         out += Escape(s);
