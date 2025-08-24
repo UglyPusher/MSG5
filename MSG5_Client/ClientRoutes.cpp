@@ -11,7 +11,7 @@ namespace msg5::config { struct ClientConfig; }
 namespace msg5::client {
 
     void RegisterClientApiRoutes(HttpServer& srv, const msg5::config::ClientConfig& cfg) {
-        auto facade = std::make_shared<APIFacade>();
+        auto facade = std::make_shared<APIFacade>(cfg.pg_dsn);
 
         // Критичный readiness-чек Postgres
             srv.addReadyCheck(
@@ -77,32 +77,6 @@ namespace msg5::client {
                 if (req.matches.size() <= 1) { res.status = 404; return; }
                 // ssub_match → строка
                 std::string method = req.matches[1].str();
-
-                if (method == "db_version") {
-                    const char* dsn = !cfg.pg_dsn.empty() ? cfg.pg_dsn.c_str() : std::getenv("MSG5_PG_DSN");
-                    if (!dsn || !*dsn) {
-                        res.status = 500;
-                        res.set_content(R"({"error":"MSG5_PG_DSN is not set"})", "application/json; charset=utf-8");
-                        return;
-
-                    }
-                    try {
-                        PgExecutor pg{ dsn };
-                        auto ver = pg.scalar("select version()");
-                        nlohmann::json out = { {"postgres_version", ver} };
-                        res.status = 200;
-                        res.set_content(out.dump(), "application/json; charset=utf-8");
-
-                    }
-                    catch (const std::exception& e) {
-                        nlohmann::json err = { {"error", e.what()} };
-                        res.status = 500;
-                        res.set_content(err.dump(), "application/json; charset=utf-8");
-
-                    }
-                    return;
-
-                }
                 facade->route(method, req, res);
             });
     }

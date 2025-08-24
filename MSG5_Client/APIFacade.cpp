@@ -1,6 +1,8 @@
 ﻿#include "APIFacade.h"
 #include <iostream>
 #include "SessionContext.h"
+#include "PgExecutor.h"
+#include <cstdlib>           // std::getenv
 
 using json = nlohmann::json;
 
@@ -66,13 +68,43 @@ void APIFacade::route(const std::string& method,
 
     }
 
-    // Заглушка: возвращаем метод + входные данные
-    json response = {
-        {"success", true},
-        {"method", method},
-        {"data", input}
-    };
-    res.set_content(response.dump(2), "application/json; charset=utf-8");
+    // === БИЗНЕС-МЕТОДЫ ===
+        if (method == "db_version") {
+                // dsn: сначала из фасада (из конфига), иначе из ENV
+            const char* env_fallback = std::getenv("MSG5_PG_DSN");
+        const char* dsn = !pg_dsn_.empty() ? pg_dsn_.c_str() : env_fallback;
+        if (!dsn || !*dsn) {
+            json error = {
+            {"success", false},
+            {"error_code", "config_error"},
+            {"message", "MSG5_PG_DSN is not set and no pg_dsn in config"},
+            {"error_uid", nullptr}
+            };
+            res.status = 500;
+            res.set_content(error.dump(2), "application/json; charset=utf-8");
+            return;
+        }
+        try {
+            PgExecutor pg{ dsn };
+            auto ver = pg.scalar("select version()");
+            json ok = {
+            {"success", true},
+            {"method", method},
+            {"data", { {"postgres_version", ver} }}
+            };
+            res.set_content(ok.dump(2), "application/json; charset=utf-8");
+            return;
+        }
+        catch (const std::exception& e) {
+            json err = { {"success", false}, {"error", e.what()} };
+            res.status = 500;
+            res.set_content(err.dump(2), "application/json; charset=utf-8");
+            return;
+        }
+    }
+        // По умолчанию — эхо (как и было)
+        json response = { {"success", true}, {"method", method}, {"data", input} };
+    res.set_content(response.dump(2), "application/json; charset=utf-8");    
 }
 
 std::string APIFacade::version() {
