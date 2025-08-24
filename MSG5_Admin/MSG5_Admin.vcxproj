@@ -58,6 +58,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\dev\libpqxx\build\src\Release;D:\dev\libpqxx\lib;C:\Program Files\PostgreSQL\16\lib;C:\Program Files\OpenSSL-Win64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>pqxx.lib;libpq.lib;libssl.lib;libcrypto.lib;ws2_32.lib;Crypt32.lib;bcrypt.lib;Secur32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>REM --- настрои под себя ---
@@ -97,6 +98,7 @@ if exist "D:\dev\libpqxx\build\src\$(Configuration)\pqxx.dll" xcopy /Y /D "D:\de
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\dev\libpqxx\build\src\Release;D:\dev\libpqxx\lib;C:\Program Files\PostgreSQL\16\lib;C:\Program Files\OpenSSL-Win64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>pqxx.lib;libpq.lib;libssl.lib;libcrypto.lib;ws2_32.lib;Crypt32.lib;bcrypt.lib;Secur32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>REM --- настрои под себя ---
@@ -118,12 +120,18 @@ if exist "D:\dev\libpqxx\build\src\$(Configuration)\pqxx.dll" xcopy /Y /D "D:\de
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AdminConfig.cpp" />
+    <ClCompile Include="AdminRoutes.cpp" />
     <ClCompile Include="MSG5_Admin.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MSG5_Core\MSG5_Core.vcxproj">
       <Project>{27d85584-fc8a-4847-9c8e-4dfcee72ea19}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AdminConfig.h" />
+    <ClInclude Include="AdminRoutes.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
