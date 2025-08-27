@@ -1,4 +1,8 @@
-﻿#include "Config/ConfigLoader.h"
+﻿#if defined(_MSC_VER) && __has_include("pch.h")
+#include "pch.h"
+#endif
+
+#include "Config/ConfigLoader.h"
 #include "AdminConfig.h"
 #include "HttpServer.h"
 #include "AdminRoutes.h"
@@ -9,6 +13,8 @@
 #else
 #  include <unistd.h>
 #endif
+
+#include "AdminPreflight.h" 
 
 
 int main(int argc, char** argv) {
@@ -28,7 +34,7 @@ int main(int argc, char** argv) {
         // Путь к admin.json:
         // 1) аргумент командной строки
         // 2) ENV MSG5_ADMIN_CONFIG
-        // 3) дефолт: ..\..\MSG5_Admin\config\admin.json (относительно x64\Release)
+        // 3) дефолт: ..\..\config\admin.json (относительно x64\Release)
         fs::path cfgPath = msg5::ConfigLoader::ResolvePath(
             argc, argv,
             "MSG5_ADMIN_CONFIG",
@@ -49,6 +55,11 @@ int main(int argc, char** argv) {
             << "\n[admin] baseline_dir=" << cfg.baseline_dir
             << "\n[admin] migrations_dir=" << cfg.migrations_dir
             << "\n";
+        
+        if (auto rc = msg5::admin::Preflight(cfg, std::cout, std::cerr);
+            rc != msg5::admin::PreflightResult::Ok) {
+            return static_cast<int>(rc);
+        }
 
         HttpServer srv(cfg.server_port);
         srv.initRoutes();

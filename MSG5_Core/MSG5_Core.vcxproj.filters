@@ -51,6 +51,12 @@
     <ClInclude Include="..\third_party\msg5_http.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\SqlUtil.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="DbProbe.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MSG5_Core.cpp">
@@ -78,6 +84,9 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="Config\ConfigLoader.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="DbProbe.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>

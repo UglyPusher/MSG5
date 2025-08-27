@@ -121,6 +121,7 @@ if exist "D:\dev\libpqxx\build\src\$(Configuration)\pqxx.dll" xcopy /Y /D "D:\de
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AdminConfig.cpp" />
+    <ClCompile Include="AdminPreflight.cpp" />
     <ClCompile Include="AdminRoutes.cpp" />
     <ClCompile Include="MSG5_Admin.cpp" />
   </ItemGroup>
@@ -131,6 +132,7 @@ if exist "D:\dev\libpqxx\build\src\$(Configuration)\pqxx.dll" xcopy /Y /D "D:\de
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AdminConfig.h" />
+    <ClInclude Include="AdminPreflight.h" />
     <ClInclude Include="AdminRoutes.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

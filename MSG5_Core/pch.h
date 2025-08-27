@@ -7,6 +7,8 @@
 #ifndef PCH_H
 #define PCH_H
 
+#include "Utils/SqlUtil.h"
+#include "DbProbe.h"
 // Добавьте сюда заголовочные файлы для предварительной компиляции
 
 

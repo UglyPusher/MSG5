@@ -97,6 +97,7 @@
     <ClInclude Include="..\third_party\msg5_http.h" />
     <ClInclude Include="Config\BasicConfig.h" />
     <ClInclude Include="Config\ConfigLoader.h" />
+    <ClInclude Include="DbProbe.h" />
     <ClInclude Include="httplib.h" />
     <ClInclude Include="HttpServer.h" />
     <ClInclude Include="json.hpp" />
@@ -106,10 +107,12 @@
     <ClInclude Include="SessionContext.h" />
     <ClInclude Include="Utils\Env.h" />
     <ClInclude Include="Utils\JsonUtil.h" />
+    <ClInclude Include="Utils\SqlUtil.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Config\BasicConfig.cpp" />
     <ClCompile Include="Config\ConfigLoader.cpp" />
+    <ClCompile Include="DbProbe.cpp" />
     <ClCompile Include="HttpServer.cpp" />
     <ClCompile Include="MSG5_Core.cpp" />
     <ClCompile Include="pch.cpp">
