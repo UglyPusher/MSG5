@@ -349,6 +349,21 @@ Notes:
 
         merge_validate(jfile, in);
         merge_validate(jstdin, in);
+        // STDIN should override values coming from config (but not CLI)
+        {
+            auto _ovr = [&](const char* k, std::string& dst){
+                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
+                    std::string v = jstdin.at(k).get<std::string>();
+                    bool from_file = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
+                    if (dst.empty() || from_file) dst = v;
+                }
+            };
+            _ovr("dsn", in.dsn);
+            _ovr("host", in.host);
+            _ovr("port", in.port);
+            _ovr("user", in.owner);
+            _ovr("password", in.owner_pass);
+        }
 
         if (in.dsn.empty()) {
             // попробуем собрать dsn интерактивно (минимум: host/port/dbname/user/password)
@@ -403,6 +418,24 @@ Notes:
 
         merge_create_db(jfile, in);
         merge_create_db(jstdin, in);
+        // STDIN should override values coming from config (but not CLI)
+        {
+            auto _ovr = [&](const char* k, std::string& dst){
+                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
+                    std::string v = jstdin.at(k).get<std::string>();
+                    bool from_file = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
+                    if (dst.empty() || from_file) dst = v;
+                }
+            };
+            _ovr("bootstrap_dsn", in.bootstrap_dsn);
+            _ovr("host", in.host);
+            _ovr("port", in.port);
+            _ovr("dbname", in.dbname);
+            _ovr("owner", in.owner);
+            _ovr("owner_pass", in.owner_pass);
+            _ovr("encoding", in.encoding);
+            _ovr("template", in.templ);
+        }
 
         // простая интерактивная докомплектация
         if (in.bootstrap_dsn.empty()) {
@@ -422,14 +455,13 @@ Notes:
         }
 
         bool dry_run = in.dry_run;
-        
-        if (!dry_run && !in.force) {
-            if (!confirm_proceed("CREATE-DATABASE", in.assume_yes)) {
-                std::cout << "Canceled. Use --dry-run to preview or --force to skip prompt.\n";
-                return 1;
-            }
-        }
 
+        // Unified execution decision: dry-run blocks, --force/--yes allow, otherwise ask.
+        if (!msg5_should_execute("CREATE-DATABASE", in)) {
+            std::cout << "DRY-RUN or not confirmed. Use --force or --yes.\n";
+            return 1;
+        }
+        msg5_legacy_confirm_sync(in);
 
         try {
             PgExecutor boot{ in.bootstrap_dsn.c_str() };
@@ -468,7 +500,7 @@ Notes:
             }
 
             if (dry_run) {
-                std::cout << "\nDRY-RUN complete. To execute, add: --confirm CREATE-DB\n";
+                std::cout << "\nDRY-RUN complete. To execute, add: --force (or --yes).\n";
             }
             else {
                 std::cout << "\nCREATE-DB done.\n";
@@ -518,6 +550,22 @@ Notes:
 
         merge_apply_meta(jfile, in);
         merge_apply_meta(jstdin, in);
+        // STDIN should override values coming from config (but not CLI)
+        {
+            auto _ovr = [&](const char* k, std::string& dst){
+                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
+                    std::string v = jstdin.at(k).get<std::string>();
+                    bool from_file = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
+                    if (dst.empty() || from_file) dst = v;
+                }
+            };
+            _ovr("app_dsn", in.app_dsn);
+            if (jstdin.contains("baseline_dir") && jstdin.at("baseline_dir").is_string()) {
+                std::string v = jstdin.at("baseline_dir").get<std::string>();
+                bool from_file = (jfile.contains("baseline_dir") && jfile.at("baseline_dir").is_string() && in.baseline_dir == jfile.at("baseline_dir").get<std::string>());
+                if (in.baseline_dir.empty() || from_file) in.baseline_dir = v;
+            }
+        }
 
         // интерактивно доберём недостающее
         if (in.app_dsn.empty()) {
@@ -542,13 +590,13 @@ Notes:
         }
 
         bool dry_run = in.dry_run;
-        
-        if (!dry_run && !in.force) {
-            if (!confirm_proceed("APPLY-META", in.assume_yes)) {
-                std::cout << "Canceled. Use --dry-run to preview or --force to skip prompt.\n";
-                return 1;
-            }
+
+        // Unified execution decision: dry-run blocks, --force/--yes allow, otherwise ask.
+        if (!msg5_should_execute("APPLY-META", in)) {
+            std::cout << "DRY-RUN or not confirmed. Use --force or --yes.\n";
+            return 1;
         }
+        msg5_legacy_confirm_sync(in);
 
         try {
             PgExecutor app{ in.app_dsn.c_str() };
