@@ -19,7 +19,7 @@ void HttpServer::initRoutes() {
 }
 
 void HttpServer::start() {
-    std::cout << "Server started at http://localhost:" << port_ << std::endl;
+    std::cout << "Server started at http://0.0.0.0:" << port_ << "\n";
     server.listen("0.0.0.0", port_);
 }
 
@@ -32,6 +32,12 @@ void HttpServer::subscribe(const std::string& method,
     else if (method == "POST") {
         server.Post(path.c_str(), std::move(handler));
     }
+    else if (method == "PUT") {
+        server.Put(path.c_str(), std::move(handler));
+    }
+    else if (method == "DELETE") {
+        server.Delete(path.c_str(), std::move(handler));
+    }
     else {
         std::cerr << "[WARN] Unsupported HTTP method for path: " << path << std::endl;
     }
@@ -42,6 +48,17 @@ void HttpServer::addReadyCheck(std::string name, ReadyCheck fn, bool critical) {
 }
 
 void HttpServer::mountSystemRoutes() {
+    // Единый JSON-ответ на 404/500 и пр.
+    server.set_error_handler([](const httplib::Request& req, httplib::Response& res) {
+        nlohmann::json j = {
+            {"success", false},
+            {"error_code", res.status == 404 ? "not_found" : "error"},
+            {"path", req.path}
+        };
+        if (res.status == 0) res.status = 404; // по умолчанию
+        res.set_content(j.dump(), "application/json; charset=utf-8");
+        });
+
     // liveness
     subscribe("GET", "/healthz",
         [](const httplib::Request&, httplib::Response& res) {
@@ -75,7 +92,7 @@ void HttpServer::mountSystemRoutes() {
                 {"ok", all_ok},
                 {"all_critical_ok", all_critical_ok},
                 {"checks", arr}
-                }.dump(), "application/json");
+                }.dump(), "application/json; charset=utf-8");
         });
 
     // статус — лёгкий JSON; можно расширить при необходимости
@@ -92,6 +109,6 @@ void HttpServer::mountSystemRoutes() {
                 {"app", appId_},
                 {"port", port_},
                 {"pid",  pid}
-                }.dump(), "application/json");
+                }.dump(), "application/json; charset=utf-8");
         });
 }

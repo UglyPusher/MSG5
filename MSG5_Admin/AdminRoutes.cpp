@@ -10,14 +10,12 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-//#include "DbProbe.h"
-//#include "Utils/SqlUtil.h"
-
 using nlohmann::json;
 
 namespace {
     // быстрый ping DSN для ready-check'ов и /admin/bootstrap/check
-    inline bool ping_dsn(const std::string& dsn, std::string& msg) {
+
+    inline bool ping_dsn(const std::string & dsn, std::string & msg) {
         if (dsn.empty()) { msg = "DSN not configured"; return false; }
         try {
             PgExecutor pg{ dsn.c_str() };
@@ -26,10 +24,7 @@ namespace {
             msg = "ok";
             return true;
         }
-        catch (const std::exception& e) {
-            msg = e.what();
-            return false;
-        }
+        catch (const std::exception& e) { msg = e.what(); return false; }
     }
 } // namespace
 
@@ -77,10 +72,7 @@ namespace msg5::admin {
                 };
                 j["paths"] = {
                     "/admin/describe",
-                    "/admin/bootstrap/check",
-                    "/admin/bootstrap/create-db",
-                    "/admin/bootstrap/load-baseline",
-                    "/admin/bootstrap/apply-migrations"
+                    "/admin/bootstrap/check"
                 };
                 res.set_content(j.dump(), "application/json; charset=utf-8");
             });
@@ -113,33 +105,6 @@ namespace msg5::admin {
                     }}
                 };
                 res.set_content(out.dump(2), "application/json; charset=utf-8");
-            });
-
-        // Заглушки (остальные операции реализуем позже)
-        auto not_implemented = [](const std::string& path, httplib::Response& res) {
-            json j = { {"success",false},
-                      {"error_code","not_implemented"},
-                      {"message","Endpoint is a stub: " + path} };
-            res.status = 501;
-            res.set_content(j.dump(2), "application/json; charset=utf-8");
-            };
-
-        srv.subscribe("POST", R"(^/admin/bootstrap/create-db$)",
-            [not_implemented](const httplib::Request& req, httplib::Response& res) {
-                (void)req;
-                not_implemented("/admin/bootstrap/create-db", res);
-            });
-
-        srv.subscribe("POST", R"(^/admin/bootstrap/load-baseline$)",
-            [not_implemented](const httplib::Request& req, httplib::Response& res) {
-                (void)req;
-                not_implemented("/admin/bootstrap/load-baseline", res);
-            });
-
-        srv.subscribe("POST", R"(^/admin/bootstrap/apply-migrations$)",
-            [not_implemented](const httplib::Request& req, httplib::Response& res) {
-                (void)req;
-                not_implemented("/admin/bootstrap/apply-migrations", res);
             });
     }
 

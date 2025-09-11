@@ -2,6 +2,7 @@
 #include <string>
 #include <nlohmann/json.hpp>
 #include "Config/BasicConfig.h"
+#include "Utils/Env.h"
 
 namespace msg5::config {
 
@@ -23,7 +24,7 @@ namespace msg5::config {
         void apply_env_overrides(const char* prefix = "MSG5_") {
             BasicConfig::apply_env_overrides(prefix);
             const std::string k = std::string(prefix) + "PG_DSN";
-            if (const char* v = std::getenv(k.c_str())) if (*v) pg_dsn = v;
+            if (auto v = msg5::utils::getenv_str(k.c_str())) if (!v->empty()) pg_dsn = *v;
         }
 
         void validate() const {

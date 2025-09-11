@@ -1,9 +1,5 @@
 ﻿#include "pch.h"
 
-#if defined(_MSC_VER) && __has_include("pch.h")
-#include "pch.h"
-#endif
-
 #include "DbProbe.h"
 #include "PgExecutor.h"
 #include "Utils/SqlUtil.h"

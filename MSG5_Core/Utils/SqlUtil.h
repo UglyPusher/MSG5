@@ -6,7 +6,10 @@ namespace msg5::sql {
 
     // 't'/'1'/'true' → true
     inline bool as_bool(std::string_view v) {
-        return v == "t" || v == "1" || v == "true" || v == "TRUE";
+        // normalize to lower
+        std::string s; s.reserve(v.size());
+        for (char c : v) s.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        return (s == "t" || s == "true" || s == "1" || s == "on" || s == "yes");
     }
 
     // "ident" (двойные кавычки удваиваем)

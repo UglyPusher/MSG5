@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|x64">
-      <Configuration>Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
@@ -18,12 +14,6 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
@@ -36,49 +26,10 @@
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)UNICODE;_UNICODE;_WIN32_WINNT=0x0A00;NOMINMAX;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>C:\Users\днс\source\repos\MSG5\third_party;C:\Users\днс\source\repos\MSG5\MSG5_Core;D:\dev\libpqxx\include;$(SolutionDir)MSG5_Core;C:\Program Files\PostgreSQL\16\include;C:\Program Files\OpenSSL-Win64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\dev\libpqxx\build\src\Release;D:\dev\libpqxx\lib;C:\Program Files\PostgreSQL\16\lib;C:\Program Files\OpenSSL-Win64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>pqxx.lib;libpq.lib;libssl.lib;libcrypto.lib;ws2_32.lib;Crypt32.lib;bcrypt.lib;Secur32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-    <PostBuildEvent>
-      <Command>REM --- настрои под себя ---
-set PGROOT=C:\Program Files\PostgreSQL\16
-set OPENSSL=C:\Program Files\OpenSSL-Win64
-
-REM PostgreSQL runtime
-if exist "%PGROOT%\bin\libpq.dll"  xcopy /Y /D "%PGROOT%\bin\libpq.dll"  "$(OutDir)"
-if exist "%PGROOT%\bin\zlib1.dll"  xcopy /Y /D "%PGROOT%\bin\zlib1.dll"  "$(OutDir)"
-if exist "%PGROOT%\bin\zstd.dll"   xcopy /Y /D "%PGROOT%\bin\zstd.dll"   "$(OutDir)"
-
-REM OpenSSL runtime
-if exist "%OPENSSL%\bin\libssl-3-x64.dll"   xcopy /Y /D "%OPENSSL%\bin\libssl-3-x64.dll"   "$(OutDir)"
-if exist "%OPENSSL%\bin\libcrypto-3-x64.dll" xcopy /Y /D "%OPENSSL%\bin\libcrypto-3-x64.dll" "$(OutDir)"
-
-REM (если pqxx собран как DLL — не всегда)
-if exist "D:\dev\libpqxx\build\src\$(Configuration)\pqxx.dll" xcopy /Y /D "D:\dev\libpqxx\build\src\$(Configuration)\pqxx.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>

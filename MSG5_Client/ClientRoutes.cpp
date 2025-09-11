@@ -5,7 +5,7 @@
 #include "PgExecutor.h"
 #include "ClientConfig.h"
 #include <memory>
-#include <cstdlib> // std::getenv
+#include "Utils/Env.h"
 
 namespace msg5::config { struct ClientConfig; }
 namespace msg5::client {
@@ -17,8 +17,9 @@ namespace msg5::client {
             srv.addReadyCheck(
                 "postgres",
                 [dsn = cfg.pg_dsn](std::string& msg) -> bool {
-                    const char* use = !dsn.empty() ? dsn.c_str() : std::getenv("MSG5_PG_DSN");
-                    if (!use || !*use) { msg = "PG DSN not configured"; return false; }
+                    auto env_dsn = msg5::utils::getenv_str("MSG5_PG_DSN");
+                    const std::string use = !dsn.empty() ? dsn : env_dsn.value_or("");
+                    if (use.empty()) { msg = "PG DSN not configured"; return false; }
                      try {
                         PgExecutor pg{ use };
                         auto val = pg.scalar("select 1");
@@ -62,8 +63,9 @@ namespace msg5::client {
         // Лёгкая проверка подключения к Postgres
         srv.subscribe("GET", R"(^/api/db/version$)",
             [cfg](const httplib::Request&, httplib::Response& res) {
-                const char* dsn = !cfg.pg_dsn.empty() ? cfg.pg_dsn.c_str() : std::getenv("MSG5_PG_DSN");
-                if (!dsn || !*dsn) { res.status = 500; res.set_content(R"({"error":"MSG5_PG_DSN is not set"})", "application/json; charset=utf-8"); return; }
+                auto env_dsn = msg5::utils::getenv_str("MSG5_PG_DSN");
+                const std::string dsn = !cfg.pg_dsn.empty() ? cfg.pg_dsn : env_dsn.value_or("");
+                if (dsn.empty()) { res.status = 500; res.set_content(R"({"error":"MSG5_PG_DSN is not set"})", "application/json; charset=utf-8"); return; }
                 try {
                     PgExecutor pg{ dsn }; auto ver = pg.scalar("select version()");
                     nlohmann::json out = { {"postgres_version", ver} };

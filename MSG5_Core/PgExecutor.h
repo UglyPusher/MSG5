@@ -27,6 +27,10 @@ public:
         // NULL или отсутствие строк → пустая строка.
         std::string scalar(const std::string & sql);
 
+        // NEW: выполнить DDL/DML без возврата
+        // Выполнить произвольный SQL без возврата результата (DDL/DML)
+        void exec(const std::string & sql);
+
 private:
     std::unique_ptr<pqxx::connection> conn;
 

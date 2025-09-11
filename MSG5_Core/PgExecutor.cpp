@@ -128,3 +128,10 @@ std::string PgExecutor::callText1Int(const std::string& qualified_name,
     tx.commit();
     return res;
 }
+
+void PgExecutor::exec(const std::string & sql) {
+    ensureConnected();
+    pqxx::work tx{ *conn };
+    tx.exec(sql);
+    tx.commit();
+}

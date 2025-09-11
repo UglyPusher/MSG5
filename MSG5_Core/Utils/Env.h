@@ -11,4 +11,9 @@ namespace msg5::utils {
 	//   if (auto v = msg5::utils::getenv_str("MSG5_APP_DSN")) cfg.app_dsn = *v;
 	std::optional<std::string> getenv_str(const char* name);
 
+	inline std::string getenv_or(const char* name, std::string def = {}) {
+		if (auto v = getenv_str(name)) return *v;
+		return def;
+	}
+
 } // namespace msg5::utils
