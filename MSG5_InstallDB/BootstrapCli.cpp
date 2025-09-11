@@ -1,4 +1,4 @@
-#include "BootstrapCli.h"
+п»ї#include "BootstrapCli.h"
 
 #include "PgExecutor.h"
 #include "DbProbe.h"
@@ -20,7 +20,7 @@
 #include <stdexcept>
 
 // -----------------------------------------------------------------------------
-// P0.2 — Safe SQL quoting helpers
+// P0.2 вЂ” Safe SQL quoting helpers
 //  - sql_quote_ident(s): quotes PostgreSQL identifiers safely.
 //  - sql_quote_lit(s):   quotes PostgreSQL string literals safely.
 //
@@ -28,7 +28,7 @@
 //  * Identifiers are double-quoted; inner `"` are doubled.
 //  * Literals are single-quoted; inner `'` are doubled; backslashes are not special.
 //  * Use for: database names, schema/table/role names, and any dynamic identifier.
-//  * DO NOT use ident quoting for connection strings (DSN) — only for SQL text.
+//  * DO NOT use ident quoting for connection strings (DSN) вЂ” only for SQL text.
 // -----------------------------------------------------------------------------
 static std::string sql_quote_ident(const std::string & in) {
     // Empty identifier is invalid in SQL; refuse explicitly to avoid generating broken SQL.
@@ -69,7 +69,7 @@ static std::string sql_quote_lit(const std::string & in) {
 }
 
 // Convenience builder for CREATE DATABASE. You may use it to avoid manual string concatenation.
-// Optional args: owner, template, encoding — pass empty string to skip.
+// Optional args: owner, template, encoding вЂ” pass empty string to skip.
 static std::string build_create_database_sql(const std::string & dbname,
     const std::string & owner,
     const std::string & templ,
@@ -98,7 +98,7 @@ using msg5::sql::quote_lit;
 
 namespace {
 
-    // -------------------------- утилиты ввода/вывода --------------------------
+    // -------------------------- СѓС‚РёР»РёС‚С‹ РІРІРѕРґР°/РІС‹РІРѕРґР° --------------------------
 
     std::string prompt_line(const char* label, const std::string& def = {}) {
         std::string v;
@@ -139,7 +139,7 @@ namespace {
         return s;
     }
 
-    // печать справки
+    // РїРµС‡Р°С‚СЊ СЃРїСЂР°РІРєРё
    // help text (ASCII/UTF-8 safe)
     void print_usage() {
         std::cout <<
@@ -166,7 +166,7 @@ Notes:
 )";
     }
 
-    // чтение JSON из файла, если он есть
+    // С‡С‚РµРЅРёРµ JSON РёР· С„Р°Р№Р»Р°, РµСЃР»Рё РѕРЅ РµСЃС‚СЊ
     json load_config_json_if_any(const fs::path& config_path, bool& has_file_out) {
         has_file_out = false;
         if (config_path.empty()) return json::object();
@@ -183,7 +183,7 @@ Notes:
         }
     }
 
-    // чтение JSON из stdin, если флаг включён
+    // С‡С‚РµРЅРёРµ JSON РёР· stdin, РµСЃР»Рё С„Р»Р°Рі РІРєР»СЋС‡С‘РЅ
     json load_stdin_json_if_any(bool use_stdin) {
         if (!use_stdin) return json::object();
         std::istreambuf_iterator<char> it(std::cin.rdbuf());
@@ -193,7 +193,7 @@ Notes:
         catch (...) { return json::object(); }
     }
 
-    // -------------------------- структура входных параметров --------------------------
+    // -------------------------- СЃС‚СЂСѓРєС‚СѓСЂР° РІС…РѕРґРЅС‹С… РїР°СЂР°РјРµС‚СЂРѕРІ --------------------------
 
     struct Inputs {
             // global flags
@@ -266,7 +266,7 @@ Notes:
         confirm.clear();
     }
 
-    // -------------------------- подтверждение выполнения --------------------------
+    // -------------------------- РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РІС‹РїРѕР»РЅРµРЅРёСЏ --------------------------
        
     bool confirm_proceed(const char* what, bool assume_yes) {
         if (assume_yes) return true;
@@ -277,7 +277,7 @@ Notes:
         return (line == "y" || line == "yes");
     }
     
-    // -------------------------- слияние параметров из JSON --------------------------
+    // -------------------------- СЃР»РёСЏРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ РёР· JSON --------------------------
 
     void merge_validate(const json& j, Inputs& in) {
         auto get = [&](const char* k, std::string& dst) {
@@ -285,10 +285,10 @@ Notes:
                 dst = j.at(k).get<std::string>();
             };
         get("dsn", in.dsn);
-        // совместимость с create-database: можно переиспользовать поля
+        // СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚СЊ СЃ create-database: РјРѕР¶РЅРѕ РїРµСЂРµРёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РїРѕР»СЏ
         get("host", in.host);
         get("port", in.port);
-        get("user", in.owner);      // не обязательно
+        get("user", in.owner);      // РЅРµ РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ
         get("password", in.owner_pass);
     }
 
@@ -317,7 +317,7 @@ Notes:
             in.baseline_dir = j.at("baseline_dir").get<std::string>();
     }
 
-    // -------------------------- помощь по create-database --------------------------
+    // -------------------------- РїРѕРјРѕС‰СЊ РїРѕ create-database --------------------------
 
     bool role_exists(PgExecutor& pg, const std::string& role) {
         auto v = pg.scalar("select exists(select 1 from pg_roles where rolname=" + quote_lit(role) + ")");
@@ -351,7 +351,7 @@ Notes:
         merge_validate(jstdin, in);
 
         if (in.dsn.empty()) {
-            // попробуем собрать dsn интерактивно (минимум: host/port/dbname/user/password)
+            // РїРѕРїСЂРѕР±СѓРµРј СЃРѕР±СЂР°С‚СЊ dsn РёРЅС‚РµСЂР°РєС‚РёРІРЅРѕ (РјРёРЅРёРјСѓРј: host/port/dbname/user/password)
             std::cout << "[validate] DSN is empty - enter parts\n";
             in.host = in.host.empty() ? prompt_line("  host", "127.0.0.1") : in.host;
             in.port = in.port.empty() ? prompt_line("  port", "5432") : in.port;
@@ -404,7 +404,7 @@ Notes:
         merge_create_db(jfile, in);
         merge_create_db(jstdin, in);
 
-        // простая интерактивная докомплектация
+        // РїСЂРѕСЃС‚Р°СЏ РёРЅС‚РµСЂР°РєС‚РёРІРЅР°СЏ РґРѕРєРѕРјРїР»РµРєС‚Р°С†РёСЏ
         if (in.bootstrap_dsn.empty()) {
             std::cout << "[create] Enter bootstrap DSN (admin):\n";
             in.bootstrap_dsn = prompt_line("  bootstrap_dsn");
@@ -519,7 +519,7 @@ Notes:
         merge_apply_meta(jfile, in);
         merge_apply_meta(jstdin, in);
 
-        // интерактивно доберём недостающее
+        // РёРЅС‚РµСЂР°РєС‚РёРІРЅРѕ РґРѕР±РµСЂС‘Рј РЅРµРґРѕСЃС‚Р°СЋС‰РµРµ
         if (in.app_dsn.empty()) {
             std::cout << "[apply] Enter app DSN (user that can create meta objects):\n";
             in.app_dsn = prompt_line("  app_dsn");
@@ -553,9 +553,9 @@ Notes:
         try {
             PgExecutor app{ in.app_dsn.c_str() };
 
-            // идемпотентность: если мета уже есть — ничего не делаем
+            // РёРґРµРјРїРѕС‚РµРЅС‚РЅРѕСЃС‚СЊ: РµСЃР»Рё РјРµС‚Р° СѓР¶Рµ РµСЃС‚СЊ вЂ” РЅРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј
             if (msg5::dbprobe::meta_schema_present(app)) {
-                std::cout << "[apply] meta.meta_schema already present — nothing to do\n";
+                std::cout << "[apply] meta.meta_schema already present вЂ” nothing to do\n";
                 return 0;
             }
 
@@ -667,18 +667,18 @@ Notes:
 
 } // namespace
 
-// -------------------------- вход в CLI --------------------------
+// -------------------------- РІС…РѕРґ РІ CLI --------------------------
 
 int RunBootstrapCli(int argc, char** argv) {
     if (argc < 2) { print_usage(); return 2; }
     std::string cmd = argv[1];
 
     Inputs in;
-    // простой парсер аргументов (без сторонних библиотек)
+    // РїСЂРѕСЃС‚РѕР№ РїР°СЂСЃРµСЂ Р°СЂРіСѓРјРµРЅС‚РѕРІ (Р±РµР· СЃС‚РѕСЂРѕРЅРЅРёС… Р±РёР±Р»РёРѕС‚РµРє)
     for (int i = 2; i < argc; ++i) {
         std::string a = argv[i];
 
-        // общие
+        // РѕР±С‰РёРµ
         if (a == "--stdin-json") { in.stdin_json = true; continue; }
         if (a == "--config" && i + 1 < argc) { in.config_path = argv[++i]; continue; }
         if (a == "--dry-run") { in.dry_run = true; continue; }
