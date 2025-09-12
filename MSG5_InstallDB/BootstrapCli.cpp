@@ -161,8 +161,8 @@ Usage:
       [--dry-run] [--force] [--yes]
 
 Notes:
-  - Parameter precedence: CLI > STDIN-JSON > config (ENV MSG5_BOOTSTRAP_CONFIG points to config path).
-  - Default mode is DRY-RUN and prints a plan ([plan]). To execute, add --force (or auto-confirm with --yes).
+  - Parameter precedence: CLI > STDIN-JSON > CONFIG (ENV MSG5_BOOTSTRAP_CONFIG points to config path).
+  - Default mode is DRY-RUN and prints a plan ([plan] ). To execute, add --force (or auto-confirm with --yes).
 )";
     }
 
@@ -472,7 +472,7 @@ Notes:
                 sql << "CREATE ROLE " << sql_quote_ident(in.owner) << " LOGIN";
                 if (!in.owner_pass.empty())
                     sql << " PASSWORD " << quote_lit(in.owner_pass);
-                std::cout << (dry_run ? "[plan] " : "[do]   ")
+                std::cout << (dry_run ? "[plan] " : "[do]  ")
                     << "create role " << in.owner << "\n";
                 if (!dry_run) boot.exec(sql.str());
             }
@@ -488,7 +488,7 @@ Notes:
                     in.templ,
                     in.encoding
                     );
-                std::cout << (dry_run ? "[plan] " : "[do]   ")
+                std::cout << (dry_run ? "[plan] " : "[do]  ")
                     << "create database " << in.dbname
                     << " owner " << in.owner
                     << " encoding " << in.encoding
@@ -607,20 +607,20 @@ Notes:
                 return 0;
             }
 
-            std::cout << (dry_run ? "[plan] " : "[do]   ")
+            std::cout << (dry_run ? "[plan] " : "[do]  ")
                 << "Applying baseline from: " << in.baseline_dir.string() << "\n";
-            
+
             auto tx_mode_str = std::string{};
             switch (in.tx_mode) {
             case Inputs::TxMode::PerFile: tx_mode_str = "per-file"; break;
             case Inputs::TxMode::Single:  tx_mode_str = "single";   break;
             case Inputs::TxMode::None:    tx_mode_str = "none";     break;
             }
-            
-            std::cout << (dry_run ? "[plan] " : "[do]   ")
+
+            std::cout << (dry_run ? "[plan] " : "[do]  ")
                 << "Tx mode: " << tx_mode_str
                 << (in.continue_on_error ? " (continue-on-error)" : "") << "\n";
-            
+
             // If user asks for --tx-mode=single with --continue-on-error, warn and degrade to per-file.
             
             if (in.tx_mode == Inputs::TxMode::Single && in.continue_on_error) {
@@ -637,7 +637,7 @@ Notes:
                     for (auto& f : files) {
                         ++idx;
                         const auto fname = f.filename().string();
-                        std::cout << (dry_run ? "[plan] " : "[do]   ")
+                        std::cout << (dry_run ? "[plan] " : "[do]  ")
                             << "[" << idx << "/" << files.size() << "] run " << fname << "\n";
                         if (dry_run) continue;
                         std::ifstream is(f, std::ios::binary);
@@ -661,10 +661,10 @@ Notes:
                 for (auto& f : files) {
                     ++idx;
                     const auto fname = f.filename().string();
-                    std::cout << (dry_run ? "[plan] " : "[do]   ")
+                    std::cout << (dry_run ? "[plan] " : "[do]  ")
                         << "[" << idx << "/" << files.size() << "] run " << fname << "\n";
                     if (dry_run) continue;
-                    
+
                     std::ifstream is(f, std::ios::binary);
                     if (!is) {
                         std::string msg = "cannot open " + f.string();
