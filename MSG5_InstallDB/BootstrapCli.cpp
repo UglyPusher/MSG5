@@ -365,6 +365,17 @@ Notes:
             _ovr("password", in.owner_pass);
         }
 
+        // Dry-run: skip prompts and real connections
+        if (in.dry_run) {
+            if (in.dsn.empty()) {
+                std::cout << "[plan] validate: would prompt for host/port/dbname/user (dry-run)\n";
+                return 0;
+            } else {
+                std::cout << "[plan] validate: would check connection (dry-run)\n";
+                return 0;
+            }
+        }
+
         if (in.dsn.empty()) {
             // попробуем собрать dsn интерактивно (минимум: host/port/dbname/user/password)
             std::cout << "[validate] DSN is empty - enter parts\n";
