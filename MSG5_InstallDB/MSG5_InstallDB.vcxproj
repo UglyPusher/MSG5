@@ -59,6 +59,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BootstrapCli.h" />
+    <ClInclude Include="bootstrap\Prompts.h" />
+    <ClInclude Include="bootstrap\UsageText.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MSG5_Core\MSG5_Core.vcxproj">

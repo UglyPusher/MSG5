@@ -61,7 +61,6 @@ config/*.json
 *.bak
 *.old
 
-rnd/*.md
-rnd/*.txt
-
+.rnd/
+*.patch
 tmp/*.*

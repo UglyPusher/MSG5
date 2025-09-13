@@ -5,12 +5,17 @@
 #include "Utils/SqlUtil.h"
 #include "Utils/Env.h"
 #include "Config/ConfigLoader.h"
+#include "bootstrap/Prompts.h"
+#include "bootstrap/UsageText.h"
+
 
 #include <nlohmann/json.hpp>
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <cstdio>
+
 #include <sstream>
 #include <string>
 #include <vector>
@@ -30,43 +35,14 @@
 //  * Use for: database names, schema/table/role names, and any dynamic identifier.
 //  * DO NOT use ident quoting for connection strings (DSN) — only for SQL text.
 // -----------------------------------------------------------------------------
-static std::string sql_quote_ident(const std::string & in) {
-    // Empty identifier is invalid in SQL; refuse explicitly to avoid generating broken SQL.
-    if (in.empty()) throw std::invalid_argument("sql_quote_ident: empty identifier");
-    std::string out;
-    out.reserve(in.size() + 2);
-    out.push_back('"');
-    for (unsigned char ch : in) {
-        if (ch == '"') {
-            // escape quote by doubling it
-            out.push_back('"');
-            out.push_back('"');
-        }
-        else {
-            out.push_back(static_cast<char>(ch));
-        }
-    }
-    out.push_back('"');
-    return out;
-}
+// moved to header
 
-static std::string sql_quote_lit(const std::string & in) {
-    std::string out;
-    out.reserve(in.size() + 2);
-    out.push_back('\'');
-    for (unsigned char ch : in) {
-        if (ch == '\'') {
-            // escape single quote by doubling it
-            out.push_back('\'');
-            out.push_back('\'');
-        }
-        else {
-            out.push_back(static_cast<char>(ch));
-        }
-    }
-    out.push_back('\'');
-    return out;
-}
+
+// moved to header
+using msg5::utils::getenv_str;
+using msg5::sql::quote_lit;
+using msg5::sql::quote_ident;
+
 
 // Convenience builder for CREATE DATABASE. You may use it to avoid manual string concatenation.
 // Optional args: owner, template, encoding — pass empty string to skip.
@@ -75,10 +51,10 @@ static std::string build_create_database_sql(const std::string & dbname,
     const std::string & templ,
     const std::string & encoding) {
     if (dbname.empty()) throw std::invalid_argument("CREATE DATABASE: dbname is required");
-    std::string sql = "CREATE DATABASE " + sql_quote_ident(dbname);
-    if (!owner.empty())    sql += " OWNER " + sql_quote_ident(owner);
-    if (!templ.empty())    sql += " TEMPLATE " + sql_quote_ident(templ);
-    if (!encoding.empty()) sql += " ENCODING " + sql_quote_lit(encoding);
+    std::string sql = "CREATE DATABASE " + quote_ident(dbname);
+    if (!owner.empty())    sql += " OWNER " + quote_ident(owner);
+    if (!templ.empty())    sql += " TEMPLATE " + quote_ident(templ);
+    if (!encoding.empty()) sql += " ENCODING " + quote_lit(encoding);
     sql += ";";
     return sql;
 }
@@ -92,91 +68,36 @@ static std::string build_create_database_sql(const std::string & dbname,
 
 using nlohmann::json;
 namespace fs = std::filesystem;
-using msg5::utils::getenv_str;
-using msg5::sql::quote_lit;
+using bootstrap::prompt_line;
+using bootstrap::prompt_hidden;
+using bootstrap::msg5_prompt_yes_no;
+using bootstrap::print_usage;
+
 
 
 namespace {
 
     // -------------------------- утилиты ввода/вывода --------------------------
 
-    std::string prompt_line(const char* label, const std::string& def = {}) {
-        std::string v;
-        std::cout << label;
-        if (!def.empty()) std::cout << " [" << def << "]";
-        std::cout << ": ";
-        std::getline(std::cin, v);
-        if (v.empty()) v = def;
-        return v;
-    }
+    // moved to header
 
-    std::string prompt_hidden(const char* label) {
-        std::cout << label << ": ";
-        std::string s;
+// moved to header (prompt_line)
+// moved to header
 
-#ifdef _WIN32
-        for (;;) {
-            int ch = _getch();
-            if (ch == '\r' || ch == '\n') break;
-            if (ch == 8 /*backspace*/) {
-                if (!s.empty()) s.pop_back();
-                continue;
-            }
-            if (ch == 3 /*Ctrl+C*/) { std::cout << "\n"; throw std::runtime_error("^C"); }
-            if (ch >= 32 && ch <= 126) s.push_back(static_cast<char>(ch));
-        }
-        std::cout << "\n";
-#else
-        termios oldt{};
-        tcgetattr(STDIN_FILENO, &oldt);
-        termios newt = oldt;
-        newt.c_lflag &= ~ECHO;
-        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-        std::getline(std::cin, s);
-        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-        std::cout << "\n";
-#endif
-        return s;
-    }
 
     // печать справки
    // help text (ASCII/UTF-8 safe)
-    void print_usage() {
-        std::cout <<
-            R"(MSG5_Bootstrap - CLI
+    // moved to header
 
-Usage:
-  MSG5_Bootstrap validate
-      [--dsn "..."] [--config PATH] [--stdin-json] [--ask-pass]
-
-  MSG5_Bootstrap create-database
-      [--bootstrap-dsn "..."] [--config PATH] [--stdin-json]
-      [--dbname MSG5] [--owner msg5_app_owner] [--owner-pass ***|--ask-owner-pass]
-      [--encoding UTF8] [--template template1]
-      [--dry-run] [--force] [--yes]
-
-  MSG5_Bootstrap apply-meta-structure
-      [--app-dsn "..."] [--baseline-dir PATH] [--config PATH] [--stdin-json]
-      [--tx-mode per-file|single|none] [--continue-on-error]
-      [--dry-run] [--force] [--yes]
-
-Notes:
-  - Parameter precedence: CLI > STDIN-JSON > CONFIG (ENV MSG5_BOOTSTRAP_CONFIG points to config path).
-  - Default mode is DRY-RUN and prints a plan ([plan] ). To execute, add --force (or auto-confirm with --yes).
-)";
-    }
 
     // чтение JSON из файла, если он есть
     json load_config_json_if_any(const fs::path& config_path, bool& has_file_out) {
         has_file_out = false;
         if (config_path.empty()) return json::object();
-        std::error_code ec;
-        if (!fs::exists(config_path, ec)) return json::object();
-        std::ifstream is(config_path, std::ios::binary);
-        if (!is) return json::object();
-        has_file_out = true;
         try {
-            return json::parse(is);
+            msg5::ConfigLoader loader(config_path.string());
+            has_file_out = loader.isValid();
+            return loader.root();
         }
         catch (...) {
             return json::object();
@@ -234,23 +155,12 @@ Notes:
     static std::string confirm; // DEPRECATED: do not use in new code
 
     // Simple prompt function for interactive confirmation; returns true when user answers yes.
-    static bool msg5_prompt_yes_no(const std::string& question) {
-        // Print question and read a line; accept y/yes/Y/YES
-        std::fprintf(stdout, "[confirm] %s [y/N]: ", question.c_str());
-        std::fflush(stdout);
-        std::string line;
-        std::getline(std::cin, line);
-        // normalize
-        for (auto& ch : line) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-        return (line == "y" || line == "yes");
-    }
-
+    
     // Use this in new code to decide whether an operation should execute.
     // Contract:
     //   - returns false in dry-run;
     //   - returns true if --force or --yes is set;
     //   - otherwise asks the user interactively.
-    struct Inputs; // forward decl (defined elsewhere in this TU)
     static bool msg5_should_execute(const std::string& op_name, const Inputs& in) {
         if (in.dry_run) return false;
         if (in.force || in.assume_yes) return true;
@@ -332,14 +242,18 @@ Notes:
     // -------------------------- validate --------------------------
 
     int cmd_validate(Inputs in) {
+        // validate must never be dry-run by default
+        in.dry_run = false;
+
         // resolve config path: CLI > ENV > default
         fs::path cfg = in.config_path;
         if (cfg.empty()) {
-            if (auto e = getenv_str("MSG5_BOOTSTRAP_CONFIG")) {
-                if (!e->empty()) cfg = *e;
-            }
-            else {
-                cfg = fs::current_path() / ".." / ".." / "config" / "bootstrap.json";
+            try {
+                cfg = msg5::ConfigLoader::ResolvePath(0, nullptr,
+                    "MSG5_BOOTSTRAP_CONFIG",
+                    fs::path("..") / ".." / "config" / "bootstrap.json");
+            } catch (...) {
+                // no config is okay; proceed with empty JSON
             }
         }
 
@@ -349,6 +263,23 @@ Notes:
 
         merge_validate(jfile, in);
         merge_validate(jstdin, in);
+        // Precedence: CLI > STDIN-JSON > CONFIG > Console
+        // Apply STDIN values only if the current field is empty or equals the value from CONFIG file
+        {
+            auto _ovr = [&](const char* k, std::string& dst){
+                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
+                    std::string v = jstdin.at(k).get<std::string>();
+                    bool came_from_cfg = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
+                    if (dst.empty() || came_from_cfg) dst = v; // do not override CLI
+                }
+            };
+            _ovr("dsn", in.dsn);
+            _ovr("host", in.host);
+            _ovr("port", in.port);
+            _ovr("user", in.owner);
+            _ovr("password", in.owner_pass);
+        }
+
         // STDIN should override values coming from config (but not CLI)
         {
             auto _ovr = [&](const char* k, std::string& dst){
@@ -401,7 +332,44 @@ Notes:
                 << "  version: " << ver << "\n"
                 << "  server:  " << ip << ":" << pport << "\n"
                 << "  user:    " << usr << "\n";
-            return 0;
+
+            // ----- minimal technical validation (schemas + owners) -----
+            int fails = 0;
+            auto ok   = [&](const std::string& what){ std::cout << "[ok]    " << what << "\n"; };
+            auto fail = [&](const std::string& what){ std::cout << "[fail]  " << what << "\n"; ++fails; };
+
+            auto check_schema_with_owner = [&](const char* sname){
+                try {
+                    auto present = pg.scalar(
+                        "select count(*) from information_schema.schemata where schema_name = '" +
+                        std::string(sname) + "'"
+                    );
+                    if (present == "1") {
+                        ok(std::string("schema '") + sname + "' present");
+                        try {
+                            auto owner = pg.scalar(
+                                "select nspowner::regrole::text from pg_namespace where nspname = '" +
+                                std::string(sname) + "'"
+                            );
+                            ok(std::string("schema '") + sname + "' owner: " + owner);
+                        } catch (...) { fail(std::string("schema '") + sname + "' owner lookup failed"); }
+                    } else {
+                        fail(std::string("schema '") + sname + "' missing");
+                    }
+                } catch (...) {
+                    fail(std::string("schema '") + sname + "' check error");
+                }
+            };
+
+            check_schema_with_owner("meta");
+            check_schema_with_owner("sys");
+
+            if (fails == 0)
+                std::cout << "[validate] summary: OK\n";
+            else
+                std::cout << "[validate] summary: FAIL (" << fails << " issue(s))\n";
+
+return 0;
         }
         catch (const std::exception& e) {
             std::cerr << "[validate] ERROR: " << e.what() << "\n";
@@ -415,11 +383,12 @@ Notes:
         // resolve config path: CLI > ENV > default
         fs::path cfg = in.config_path;
         if (cfg.empty()) {
-            if (auto e = getenv_str("MSG5_BOOTSTRAP_CONFIG")) {
-                if (!e->empty()) cfg = *e;
-            }
-            else {
-                cfg = fs::current_path() / ".." / ".." / "config" / "bootstrap.json";
+            try {
+                cfg = msg5::ConfigLoader::ResolvePath(0, nullptr,
+                    "MSG5_BOOTSTRAP_CONFIG",
+                    fs::path("..") / ".." / "config" / "bootstrap.json");
+            } catch (...) {
+                // no config is okay; proceed with empty JSON
             }
         }
 
@@ -429,6 +398,26 @@ Notes:
 
         merge_create_db(jfile, in);
         merge_create_db(jstdin, in);
+        // Precedence: CLI > STDIN-JSON > CONFIG > Console
+        // Apply STDIN values only if the current field is empty or equals the value from CONFIG file
+        {
+            auto _ovr = [&](const char* k, std::string& dst){
+                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
+                    std::string v = jstdin.at(k).get<std::string>();
+                    bool came_from_cfg = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
+                    if (dst.empty() || came_from_cfg) dst = v; // do not override CLI
+                }
+            };
+            _ovr("bootstrap_dsn", in.bootstrap_dsn);
+            _ovr("host", in.host);
+            _ovr("port", in.port);
+            _ovr("dbname", in.dbname);
+            _ovr("owner", in.owner);
+            _ovr("owner_pass", in.owner_pass);
+            _ovr("encoding", in.encoding);
+            _ovr("template", in.templ);
+        }
+
         // STDIN should override values coming from config (but not CLI)
         {
             auto _ovr = [&](const char* k, std::string& dst){
@@ -480,7 +469,7 @@ Notes:
             // ensure role
             if (!role_exists(boot, in.owner)) {
                 std::ostringstream sql;
-                sql << "CREATE ROLE " << sql_quote_ident(in.owner) << " LOGIN";
+                sql << "CREATE ROLE " << quote_ident(in.owner) << " LOGIN";
                 if (!in.owner_pass.empty())
                     sql << " PASSWORD " << quote_lit(in.owner_pass);
                 std::cout << (dry_run ? "[plan] " : "[do]  ")
@@ -546,12 +535,12 @@ Notes:
         // resolve config path: CLI > ENV > default
         fs::path cfg = in.config_path;
         if (cfg.empty()) {
-            if (auto e = getenv_str("MSG5_BOOTSTRAP_CONFIG")) {
-                if (!e->empty()) cfg = *e;
-            }
-            else {
-                // Cross-platform: compose path parts instead of hardcoded backslashes
-                cfg = fs::current_path() / ".." / ".." / "config" / "bootstrap.json";
+            try {
+                cfg = msg5::ConfigLoader::ResolvePath(0, nullptr,
+                    "MSG5_BOOTSTRAP_CONFIG",
+                    fs::path("..") / ".." / "config" / "bootstrap.json");
+            } catch (...) {
+                // no config is okay; proceed with empty JSON
             }
         }
 
@@ -561,6 +550,24 @@ Notes:
 
         merge_apply_meta(jfile, in);
         merge_apply_meta(jstdin, in);
+        // Precedence: CLI > STDIN-JSON > CONFIG > Console
+        // Apply STDIN values only if the current field is empty or equals the value from CONFIG file
+        {
+            auto _ovr = [&](const char* k, std::string& dst){
+                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
+                    std::string v = jstdin.at(k).get<std::string>();
+                    bool came_from_cfg = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
+                    if (dst.empty() || came_from_cfg) dst = v; // do not override CLI
+                }
+            };
+            _ovr("app_dsn", in.app_dsn);
+            if (jstdin.contains("baseline_dir") && jstdin.at("baseline_dir").is_string()) {
+                std::string v = jstdin.at("baseline_dir").get<std::string>();
+                bool came_from_cfg = (jfile.contains("baseline_dir") && jfile.at("baseline_dir").is_string() && in.baseline_dir == jfile.at("baseline_dir").get<std::string>());
+                if (in.baseline_dir.empty() || came_from_cfg) in.baseline_dir = v; // do not override CLI
+            }
+        }
+
         // STDIN should override values coming from config (but not CLI)
         {
             auto _ovr = [&](const char* k, std::string& dst){
