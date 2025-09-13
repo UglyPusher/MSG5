@@ -70,6 +70,8 @@
     <ClInclude Include="PgExecutor.h" />
     <ClInclude Include="SessionContext.h" />
     <ClInclude Include="Utils\Env.h" />
+    <ClInclude Include="Utils\FS.h" />
+    <ClInclude Include="Utils\Json.h" />
     <ClInclude Include="Utils\JsonUtil.h" />
     <ClInclude Include="Utils\SqlUtil.h" />
   </ItemGroup>
@@ -85,6 +87,8 @@
     <ClCompile Include="PgExecutor.cpp" />
     <ClCompile Include="SessionContext.cpp" />
     <ClCompile Include="Utils\Env.cpp" />
+    <ClCompile Include="Utils\FS.cpp" />
+    <ClCompile Include="Utils\Json.cpp" />
     <ClCompile Include="Utils\JsonUtil.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

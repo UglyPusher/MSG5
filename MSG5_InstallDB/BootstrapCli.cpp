@@ -4,6 +4,8 @@
 #include "DbProbe.h"
 #include "Utils/SqlUtil.h"
 #include "Utils/Env.h"
+#include "Utils/Json.h"
+#include "Utils/FS.h"
 #include "Config/ConfigLoader.h"
 #include "bootstrap/Prompts.h"
 #include "bootstrap/UsageText.h"
@@ -39,7 +41,6 @@
 
 
 // moved to header
-using msg5::utils::getenv_str;
 using msg5::sql::quote_lit;
 using msg5::sql::quote_ident;
 
@@ -104,17 +105,7 @@ namespace {
         }
     }
 
-    // чтение JSON из stdin, если флаг включён
-    json load_stdin_json_if_any(bool use_stdin) {
-        if (!use_stdin) return json::object();
-        std::istreambuf_iterator<char> it(std::cin.rdbuf());
-        std::string buf(it, {});
-        if (buf.empty()) return json::object();
-        try { return json::parse(buf); }
-        catch (...) { return json::object(); }
-    }
-
-    // -------------------------- структура входных параметров --------------------------
+     // -------------------------- структура входных параметров --------------------------
 
     struct Inputs {
             // global flags
@@ -175,18 +166,6 @@ namespace {
         if (in.force || in.assume_yes) { confirm = "ALL"; return; }
         confirm.clear();
     }
-
-    // -------------------------- подтверждение выполнения --------------------------
-       
-    bool confirm_proceed(const char* what, bool assume_yes) {
-        if (assume_yes) return true;
-        std::cout << "[confirm] Proceed with " << what << "? [y/N]: ";
-        std::string line;
-        if (!std::getline(std::cin, line)) return false;
-        for (auto& c : line) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-        return (line == "y" || line == "yes");
-    }
-    
     // -------------------------- слияние параметров из JSON --------------------------
 
     void merge_validate(const json& j, Inputs& in) {
@@ -259,7 +238,7 @@ namespace {
 
         bool has_file = false;
         json jfile = load_config_json_if_any(cfg, has_file);
-        json jstdin = load_stdin_json_if_any(in.stdin_json);
+        json jstdin = msg5::utils::load_stdin_json_if_any(in.stdin_json);
 
         merge_validate(jfile, in);
         merge_validate(jstdin, in);
@@ -394,7 +373,7 @@ return 0;
 
         bool has_file = false;
         json jfile = load_config_json_if_any(cfg, has_file);
-        json jstdin = load_stdin_json_if_any(in.stdin_json);
+        json jstdin = msg5::utils::load_stdin_json_if_any(in.stdin_json);
 
         merge_create_db(jfile, in);
         merge_create_db(jstdin, in);
@@ -515,21 +494,6 @@ return 0;
 
     // -------------------------- apply-meta-structure --------------------------
 
-    std::vector<fs::path> list_sql_files(const fs::path& dir) {
-        std::vector<fs::path> out;
-        std::error_code ec;
-        if (!fs::exists(dir, ec) || !fs::is_directory(dir, ec)) return out;
-        for (auto& e : fs::directory_iterator(dir)) {
-            if (!e.is_regular_file()) continue;
-            auto p = e.path();
-            auto ext = p.extension().string();
-            std::transform(ext.begin(), ext.end(), ext.begin(),
-                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            if (ext == ".sql") out.push_back(p);
-        }
-        std::sort(out.begin(), out.end());
-        return out;
-    }
 
     int cmd_apply_meta(Inputs in) {
         // resolve config path: CLI > ENV > default
@@ -546,7 +510,7 @@ return 0;
 
         bool has_file = false;
         json jfile = load_config_json_if_any(cfg, has_file);
-        json jstdin = load_stdin_json_if_any(in.stdin_json);
+        json jstdin = msg5::utils::load_stdin_json_if_any(in.stdin_json);
 
         merge_apply_meta(jfile, in);
         merge_apply_meta(jstdin, in);
@@ -601,7 +565,7 @@ return 0;
             return 2;
         }
 
-        auto files = list_sql_files(in.baseline_dir);
+        auto files = msg5::utils::list_files_with_extension(in.baseline_dir, ".sql");
         if (files.empty()) {
             std::cerr << "ERROR: no *.sql files found in " << in.baseline_dir.string() << "\n";
             return 2;
