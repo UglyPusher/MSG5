@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Исходные файлы">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Файлы заголовков">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Файлы ресурсов">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Providers">
+      <UniqueIdentifier>{27a8ee3e-bb93-436a-b38f-af31280fb5b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util">
+      <UniqueIdentifier>{35987bac-5310-4a5c-ba17-76b0f880fcf5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="msg5%255cconfig">
+      <UniqueIdentifier>{f26ee7fd-7456-4910-93fa-4a4e248382ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core">
+      <UniqueIdentifier>{6074092b-a3cd-44d5-a975-95f53726dbc4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\ConfigResolver.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\util\cli_parse.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="src\util\env_utils.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="src\util\json_utils.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="src\providers\EnvSource.h">
+      <Filter>Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\msg5\config\CommandSpec.h">
+      <Filter>msg5%255cconfig</Filter>
+    </ClInclude>
+    <ClInclude Include="include\msg5\config\errors.h">
+      <Filter>msg5%255cconfig</Filter>
+    </ClInclude>
+    <ClInclude Include="include\msg5\config\IOptionsSource.h">
+      <Filter>msg5%255cconfig</Filter>
+    </ClInclude>
+    <ClInclude Include="include\msg5\config\ResolvedOptions.h">
+      <Filter>msg5%255cconfig</Filter>
+    </ClInclude>
+    <ClInclude Include="src\providers\ArgsSource.h">
+      <Filter>Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\providers\FileSource.h">
+      <Filter>Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\providers\PromptSource.h">
+      <Filter>Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\providers\SourceBase.h">
+      <Filter>Providers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\util\fs_utils.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="include\msg5\config\Resolver.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="MSG5_Config.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\ConfigResolver.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\MergeEngine.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Resolver.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Validators.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\util\cli_parse.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="src\util\env_utils.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="src\util\json_utils.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="src\providers\ArgsSource.cpp">
+      <Filter>Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\providers\EnvSource.cpp">
+      <Filter>Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\providers\FileSource.cpp">
+      <Filter>Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\providers\PromptSource.cpp">
+      <Filter>Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\providers\SourceBase.cpp">
+      <Filter>Providers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\util\fs_utils.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

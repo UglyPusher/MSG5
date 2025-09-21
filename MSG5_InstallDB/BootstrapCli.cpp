@@ -80,17 +80,6 @@ namespace {
 
     // -------------------------- утилиты ввода/вывода --------------------------
 
-    // moved to header
-
-// moved to header (prompt_line)
-// moved to header
-
-
-    // печать справки
-   // help text (ASCII/UTF-8 safe)
-    // moved to header
-
-
     // чтение JSON из файла, если он есть
     json load_config_json_if_any(const fs::path& config_path, bool& has_file_out) {
         has_file_out = false;

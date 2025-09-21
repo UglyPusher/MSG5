@@ -20,6 +20,15 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSG5_Bootstrap", "MSG5_Inst
 		{27D85584-FC8A-4847-9C8E-4DFCEE72EA19} = {27D85584-FC8A-4847-9C8E-4DFCEE72EA19}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSG5_Config", "MSG5_Config\MSG5_Config.vcxproj", "{4D975BF3-2F8E-47CD-BC18-02F1A42FDE6C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSG5_Config_Tests", "MSG5_Config_Tests\MSG5_Config_Tests.vcxproj", "{EAE5161B-3A80-4753-B25A-1FE3888C0959}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4D975BF3-2F8E-47CD-BC18-02F1A42FDE6C} = {4D975BF3-2F8E-47CD-BC18-02F1A42FDE6C}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Release|x64 = Release|x64
@@ -33,9 +42,16 @@ Global
 		{27D85584-FC8A-4847-9C8E-4DFCEE72EA19}.Release|x64.Build.0 = Release|x64
 		{28869F25-D01E-4D3C-8844-00DFCC0AF692}.Release|x64.ActiveCfg = Release|x64
 		{28869F25-D01E-4D3C-8844-00DFCC0AF692}.Release|x64.Build.0 = Release|x64
+		{4D975BF3-2F8E-47CD-BC18-02F1A42FDE6C}.Release|x64.ActiveCfg = Release|x64
+		{4D975BF3-2F8E-47CD-BC18-02F1A42FDE6C}.Release|x64.Build.0 = Release|x64
+		{EAE5161B-3A80-4753-B25A-1FE3888C0959}.Release|x64.ActiveCfg = Release|x64
+		{EAE5161B-3A80-4753-B25A-1FE3888C0959}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{EAE5161B-3A80-4753-B25A-1FE3888C0959} = {36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {83F93FEC-F078-4BB7-A96C-EC36FAFC2FFC}
