@@ -98,16 +98,17 @@
   <ItemGroup>
     <ClInclude Include="include\msg5\config\CommandSpec.h" />
     <ClInclude Include="include\msg5\config\errors.h" />
-    <ClInclude Include="include\msg5\config\IOptionsSource.h" />
+    <ClInclude Include="include\msg5\config\OptionsSourceTypes.h" />
     <ClInclude Include="include\msg5\config\ResolvedOptions.h" />
     <ClInclude Include="include\msg5\config\Resolver.h" />
+    <ClInclude Include="include\msg5\config\source\IOptionsSource.h" />
+    <ClInclude Include="include\msg5\config\source\SourceBase.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="src\core\ConfigResolver.h" />
     <ClInclude Include="src\providers\ArgsSource.h" />
     <ClInclude Include="src\providers\EnvSource.h" />
     <ClInclude Include="src\providers\FileSource.h" />
     <ClInclude Include="src\providers\PromptSource.h" />
-    <ClInclude Include="src\providers\SourceBase.h" />
     <ClInclude Include="src\util\cli_parse.h" />
     <ClInclude Include="src\util\env_utils.h" />
     <ClInclude Include="src\util\fs_utils.h" />
@@ -122,12 +123,12 @@
     <ClCompile Include="src\core\ConfigResolver.cpp" />
     <ClCompile Include="src\core\MergeEngine.cpp" />
     <ClCompile Include="src\core\Resolver.cpp" />
+    <ClCompile Include="src\core\SourceBase.cpp" />
     <ClCompile Include="src\core\Validators.cpp" />
     <ClCompile Include="src\providers\ArgsSource.cpp" />
     <ClCompile Include="src\providers\EnvSource.cpp" />
     <ClCompile Include="src\providers\FileSource.cpp" />
     <ClCompile Include="src\providers\PromptSource.cpp" />
-    <ClCompile Include="src\providers\SourceBase.cpp" />
     <ClCompile Include="src\util\cli_parse.cpp" />
     <ClCompile Include="src\util\env_utils.cpp" />
     <ClCompile Include="src\util\fs_utils.cpp" />

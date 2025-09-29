@@ -25,6 +25,9 @@
     <Filter Include="Core">
       <UniqueIdentifier>{6074092b-a3cd-44d5-a975-95f53726dbc4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="msg5%255cconfig\source">
+      <UniqueIdentifier>{6935ed43-9474-4ad9-9d82-c501849d3ac0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -51,7 +54,7 @@
     <ClInclude Include="include\msg5\config\errors.h">
       <Filter>msg5%255cconfig</Filter>
     </ClInclude>
-    <ClInclude Include="include\msg5\config\IOptionsSource.h">
+    <ClInclude Include="include\msg5\config\OptionsSourceTypes.h">
       <Filter>msg5%255cconfig</Filter>
     </ClInclude>
     <ClInclude Include="include\msg5\config\ResolvedOptions.h">
@@ -66,14 +69,17 @@
     <ClInclude Include="src\providers\PromptSource.h">
       <Filter>Providers</Filter>
     </ClInclude>
-    <ClInclude Include="src\providers\SourceBase.h">
-      <Filter>Providers</Filter>
-    </ClInclude>
     <ClInclude Include="src\util\fs_utils.h">
       <Filter>Util</Filter>
     </ClInclude>
     <ClInclude Include="include\msg5\config\Resolver.h">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\msg5\config\source\IOptionsSource.h">
+      <Filter>msg5%255cconfig\source</Filter>
+    </ClInclude>
+    <ClInclude Include="include\msg5\config\source\SourceBase.h">
+      <Filter>msg5%255cconfig\source</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -116,11 +122,11 @@
     <ClCompile Include="src\providers\PromptSource.cpp">
       <Filter>Providers</Filter>
     </ClCompile>
-    <ClCompile Include="src\providers\SourceBase.cpp">
-      <Filter>Providers</Filter>
-    </ClCompile>
     <ClCompile Include="src\util\fs_utils.cpp">
       <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\SourceBase.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
