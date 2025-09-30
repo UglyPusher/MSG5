@@ -5,7 +5,7 @@
 ## TL;DR
 - Сборка: **Visual Studio 2022**, x64, Debug/Release.
 - Публичные заголовки: `include/msg5/config/**` (в т.ч. `include/msg5/config/source/*`).
-- Источники конфигурации (CLI / FILE / ENV / STDIN) реализованы через `SourceBase`; реализации лежат в `src/providers/`.
+- Источники конфигурации (CLI / FILE / ENV / STDIN) создаются через **публичные фабрики** из `msg5/config/Sources.h`.
 - Резолвинг: `Resolver` → слияние источников по приоритету → *(план)* `apply_defaults()` → *(план)* `validate()`.
 
 ---
@@ -20,12 +20,14 @@ MSG5_Config/
 │     ├─ Resolver.h                 // фасад-оркестратор
 │     ├─ OptionsSourceTypes.h       // SourceKind, FetchResult и пр.
 │     ├─ CommandSpec.h              // спецификация опций/флагов
+│     ├─ Sources.h                  // публичные фабрики провайдеров
 │     └─ source/
 │        ├─ IOptionsSource.h        // тонкий контракт источников
 │        └─ SourceBase.h            // базовый класс (fetch no-throw, id(), kind(), emit)
 ├─ src/
 │  ├─ core/
 │  │  ├─ Resolver.cpp               // оркестратор (prepare → fetch → merge «ранний сильнее»)
+│  │  ├─ Sources.cpp                // реализация публичных фабрик (создаёт провайдеры)
 │  │  ├─ DefaultsFiller.cpp         // (P4, план) подстановка дефолтов
 │  │  └─ Validators.cpp             // (P4, план) валидация по CommandSpec
 │  ├─ providers/
@@ -106,30 +108,12 @@ CLI  >  FILE  >  ENV  >  STDIN
 
 ---
 
-## Печать «эффективной» конфигурации (план)
-
-- `dump_effective(options, origins)` — вывод ключей, значений и их источника (`Cli/File/Env/Stdin/Default`), маскируя секреты.
-- `--dry-run` — показать итог без побочных действий.
-- Коды выхода: `EXIT_OK / EXIT_USER_ERR / EXIT_SYS_ERR / EXIT_UNKNOWN_ERR`.
-
----
-
-## Пример использования (минимум)
-
-> В примере заголовки провайдеров подключены из текущего проекта.  
-> Если нужно скрыть реализацию, добавьте фабрики `createArgsSource(...)`, `createFileSource(...)` и т.п. в публичный API.
+## Пример использования (с фабриками)
 
 ```cpp
 #include "msg5/config/Resolver.h"
 #include "msg5/config/CommandSpec.h"
-#include "msg5/config/source/IOptionsSource.h"
-#include "msg5/config/source/SourceBase.h"
-
-// провайдеры (расположение может отличаться в вашем проекте):
-#include "src/providers/ArgsSource.h"
-#include "src/providers/FileSource.h"
-#include "src/providers/EnvSource.h"
-#include "src/providers/PromptSource.h"
+#include "msg5/config/Sources.h"   // публичные фабрики
 
 using namespace msg5::config;
 
@@ -137,10 +121,10 @@ int main(int argc, const char* argv[]) {
   CommandSpec spec = /* ... заполняем список options ... */;
 
   std::vector<IOptionsSourcePtr> sources;
-  sources.emplace_back(std::make_unique<ArgsSource>(argc, argv));
-  sources.emplace_back(std::make_unique<FileSource>("config/user.json"));
-  sources.emplace_back(std::make_unique<EnvSource>("MSG5_"));
-  sources.emplace_back(std::make_unique<PromptSource>());
+  sources.emplace_back(makeArgsSource(argc, argv));
+  sources.emplace_back(makeFileSource("config/user.json"));
+  sources.emplace_back(makeEnvSource("MSG5_"));
+  sources.emplace_back(makePromptSource());
 
   Resolver r(std::move(sources));
   const auto resolved = r.resolve(spec);
@@ -158,6 +142,7 @@ int main(int argc, const char* argv[]) {
 - ✅ **P1**: Единый интерфейс источников (`SourceBase`, `*Source`).
 - ✅ **P2**: `ArgsSource` + `cli_parse` (минимум).
 - ✅ **P3**: `FileSource` (плоский JSON), `EnvSource`, `PromptSource`.
+- ✅ **P3.5**: **Публичные фабрики** (`Sources.h` + `Sources.cpp`).
 - ⏳ **P4**: `DefaultsFiller` + `Validators` — подготовить типы и проверки.
 - ⏳ **P5**: `dump_effective()` + маскирование секретов.
 - ⏳ **P6**: `--help` / `--dry-run` / коды выхода.
@@ -179,4 +164,3 @@ int main(int argc, const char* argv[]) {
 ## Лицензия
 
 MIT (или согласованная в основном репозитории).
-

@@ -81,6 +81,9 @@
     <ClInclude Include="include\msg5\config\source\SourceBase.h">
       <Filter>msg5%255cconfig\source</Filter>
     </ClInclude>
+    <ClInclude Include="include\msg5\config\Sources.h">
+      <Filter>msg5%255cconfig</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MSG5_Config.cpp">
@@ -126,6 +129,9 @@
       <Filter>Util</Filter>
     </ClCompile>
     <ClCompile Include="src\core\SourceBase.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Sources.cpp">
       <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>

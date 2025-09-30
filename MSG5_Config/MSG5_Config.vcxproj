@@ -101,6 +101,7 @@
     <ClInclude Include="include\msg5\config\OptionsSourceTypes.h" />
     <ClInclude Include="include\msg5\config\ResolvedOptions.h" />
     <ClInclude Include="include\msg5\config\Resolver.h" />
+    <ClInclude Include="include\msg5\config\Sources.h" />
     <ClInclude Include="include\msg5\config\source\IOptionsSource.h" />
     <ClInclude Include="include\msg5\config\source\SourceBase.h" />
     <ClInclude Include="pch.h" />
@@ -124,6 +125,7 @@
     <ClCompile Include="src\core\MergeEngine.cpp" />
     <ClCompile Include="src\core\Resolver.cpp" />
     <ClCompile Include="src\core\SourceBase.cpp" />
+    <ClCompile Include="src\core\Sources.cpp" />
     <ClCompile Include="src\core\Validators.cpp" />
     <ClCompile Include="src\providers\ArgsSource.cpp" />
     <ClCompile Include="src\providers\EnvSource.cpp" />
