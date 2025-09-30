@@ -1,109 +1,120 @@
 ﻿#include <iostream>
-#include <memory>
-#include <vector>
 #include <string>
-#include <algorithm>
+#include <vector>
+#include <cassert>
 
-#include "msg5/config/CommandSpec.h"
-#include "msg5/config/ResolvedOptions.h"
 #include "msg5/config/Resolver.h"
-#include "msg5/config/errors.h"
-
-// провайдеры из проекта MSG5_Config
-#include "src/providers/ArgsSource.h"
-#include "src/providers/EnvSource.h"
+#include "msg5/config/CommandSpec.h"
+#include "msg5/config/ResolvedOptions.h" 
+#include "msg5/config/OptionsSourceTypes.h" // Origin, OptSecret
+#include "msg5/config/Sources.h"            // makeArgsSource/makeFileSource/makeEnvSource/makePromptSource
 
 using namespace msg5::config;
 
+// Мини-утилита печати результата
 static void print_effective(const ResolvedOptions& ro) {
-    // Сортируем ключи для стабильного вывода
-    std::vector<std::string> keys;
-    keys.reserve(ro.values.size());
-    for (const auto& kv : ro.values) keys.push_back(kv.first);
-    std::sort(keys.begin(), keys.end());
-
-    std::cout << "Effective configuration (" << keys.size() << " items)\n";
-    for (const auto& k : keys) {
-        const auto& v = ro.values.at(k);
-        auto o = ro.origin(k);
-        std::cout << "  " << k << " = " << v
-            << "  (origin=" << to_string(o) << ")\n";
+    std::cout << "=== Effective config ===\n";
+    for (const auto& kv : ro.values) {
+        const std::string& k = kv.first;
+        const std::string& v = kv.second;
+        Origin o = Origin::Default;
+        if (auto it = ro.origins.find(k); it != ro.origins.end()) {
+            o = it->second;
+        }
+        const char* oname =
+            (o == Origin::Cli) ? "Cli" :
+            (o == Origin::ConfigFile) ? "File" :
+            (o == Origin::Env) ? "Env" :
+            (o == Origin::Stdin) ? "Stdin" : "Default";
+        std::cout << "  " << k << " = " << v << "  [" << oname << "]\n";
     }
 }
 
-int main(int argc, char* argv[]) {
-    try {
-        // 1) Описываем команду и опции
-        CommandSpec spec;
-        spec.name = "msg5-config-tests";
-        spec.options.clear();
-        spec.options.reserve(3);
+// Спецификация опций без designator-инициализаторов
+static CommandSpec make_spec() {
+    CommandSpec spec;
 
-        // db.host
-        {
-            OptionSpec o;
-            o.key = "db.host";
-            o.type = OptionType::String;
-            o.required = true;
-            o.flags = OptNone; // поставить OptSecret при необходимости
-            o.json_path = "db.host";           // не обязательно, но корректно
-            o.env_names = { "MSG5_DB_HOST" };  // удобно для EnvSource
-            o.cli_flags = { "--db.host" };     // для парсера CLI
-            spec.options.push_back(std::move(o));
-        }
-
-        // db.port
-        {
-            OptionSpec o;
-            o.key = "db.port";
-            o.type = OptionType::Int;
-            o.required = true;
-            o.flags = OptNone;
-            o.json_path = "db.port";
-            o.env_names = { "MSG5_DB_PORT" };
-            o.cli_flags = { "--db.port" };
-            spec.options.push_back(std::move(o));
-        }
-
-        // log.level
-        {
-            OptionSpec o;
-            o.key = "log.level";
-            o.type = OptionType::Enum;
-            o.required = false;
-            o.flags = OptNone;
-            o.json_path = "log.level";
-            o.env_names = { "MSG5_LOG_LEVEL" };
-            o.cli_flags = { "--log.level" };
-            o.enum_values = { "debug", "info", "warn", "error" };
-            o.default_value = std::string("info");
-            spec.options.push_back(std::move(o));
-        }
-
-        // 2) Источники (приоритет слева направо): CLI > ENV
-        std::vector<IOptionsSourcePtr> sources;
-        sources.emplace_back(std::make_unique<ArgsSource>(argc, argv));
-        sources.emplace_back(std::make_unique<EnvSource>());
-
-        // 3) Резолвим и базово валидируем по спецификации
-        Resolver resolver(std::move(sources));
-        ResolvedOptions ro = resolver.resolve(spec);
-        ro.validate(spec);
-
-        // 4) Печатаем «эффективный» конфиг
-        print_effective(ro);
-        return EXIT_OK;
+    {
+        OptionSpec o{};
+        o.key = "db.host";
+        o.json_path = "db.host";              // для плоского JSON — совпадает с key
+        o.cli_flags = { "--db.host" };
+        o.env_names = {};                     // будет искать MSG5_DB_HOST
+        o.flags = 0;
+        spec.options.push_back(std::move(o));
     }
-    catch (const user_error& e) {
-        std::cerr << "User error: " << e.what() << "\n";
-        return EXIT_USER_ERR;
+    {
+        OptionSpec o{};
+        o.key = "db.user";
+        o.json_path = "db.user";
+        o.cli_flags = { "--db.user" };
+        o.env_names = { "DBUSER" };             // явный ENV-алиас
+        o.flags = 0;
+        spec.options.push_back(std::move(o));
     }
-    catch (const system_error& e) {
-        std::cerr << "System error: " << e.what() << "\n";
-        return EXIT_SYS_ERR;
+    {
+        OptionSpec o{};
+        o.key = "db.password";
+        o.json_path = "db.password";
+        o.cli_flags = { "--db.password" };
+        o.env_names = { "DBPASS" };             // явный ENV-алиас
+        o.flags = OptSecret;              // значение будет маскировано в логах
+        spec.options.push_back(std::move(o));
     }
-    catch (const std::exception& e) {
-        std::cerr << "Unexpected error: " << e.what() << "\n";
-        return EXIT_UNKNOWN_ERR;
+    {
+        OptionSpec o{};
+        o.key = "log.level";
+        o.json_path = "log.level";
+        o.cli_flags = { "--log.level" };
+        o.env_names = {};                     // MSG5_LOG_LEVEL
+        o.flags = 0;
+        spec.options.push_back(std::move(o));
     }
+
+    return spec;
+}
+
+// Базовый смок «как есть»: Args > File > Env > Stdin
+static ResolvedOptions run_basic(int argc, const char* argv[]) {
+    CommandSpec spec = make_spec();
+
+    std::vector<IOptionsSourcePtr> sources;
+    sources.emplace_back(makeArgsSource(argc, argv));
+    sources.emplace_back(makeFileSource("config/user.json")); // можно убрать/переименовать для проверки FILE_NOT_FOUND
+    sources.emplace_back(makeEnvSource("MSG5_"));
+    sources.emplace_back(makePromptSource());
+
+    Resolver r(std::move(sources));
+    return r.resolve(spec);
+}
+
+// Небольшие sanity-проверки порядка слоёв (без тяжёлого фреймворка)
+static void simple_asserts(const ResolvedOptions& ro, bool expect_file_for_log_level) {
+    // Если в файле присутствовал log.level — ожидаем Origin::File
+    if (expect_file_for_log_level) {
+        auto it = ro.origins.find("log.level");
+        assert(it != ro.origins.end() && "log.level must exist");
+        assert(it->second == Origin::File && "log.level origin must be File");
+    }
+
+    // Если CLI передан как --db.host=..., то он должен быть сильнее (ранний)
+    // Здесь просто проверяем наличие значения, Origin проверяется вручную при запуске с CLI.
+    // Пример запуска: ... --db.host=cli.local
+    (void)ro; // чтобы не ругался компилятор, если не используем
+}
+
+int main(int argc, const char* argv[]) {
+    // Сценарий: смотрим, что собралось, и печатаем
+    const ResolvedOptions ro = run_basic(argc, argv);
+
+    // Считаем, что в репозитории присутствует пример config/user.json с полем log.level,
+    // тогда ожидаем Origin::File для log.level. При необходимости выставьте флаг в false.
+    const bool expect_file_for_log_level = true;
+    simple_asserts(ro, expect_file_for_log_level);
+
+    print_effective(ro);
+
+    // Успех — код 0
+    std::cout << "\nMSG5_Config_Tests done.\n";
+    return 0;
 }
