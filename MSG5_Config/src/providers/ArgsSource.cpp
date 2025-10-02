@@ -6,7 +6,7 @@
 namespace msg5::config {
 
     ArgsSource::ArgsSource(int argc, const char* const* argv)
-        : SourceBase(SourceKind::Cli, "cli") {
+        : SourceBase(ProviderClass::Cli, "cli") {
         argv_.reserve(static_cast<size_t>(argc));
         for (int i = 0; i < argc; ++i) {
             argv_.emplace_back(argv[i] ? argv[i] : "");
@@ -14,7 +14,7 @@ namespace msg5::config {
     }
 
     ArgsSource::ArgsSource(std::vector<std::string> argv)
-        : SourceBase(SourceKind::Cli, "cli"), argv_(std::move(argv)) {
+        : SourceBase(ProviderClass::Cli, "cli"), argv_(std::move(argv)) {
     }
 
     void ArgsSource::prepare(const CommandSpec& spec) {

@@ -9,7 +9,7 @@ namespace msg5::config {
 	
 	class ArgsSource final : public SourceBase {
 	public:
-		ArgsSource() : SourceBase(SourceKind::Cli, "cli") {}
+		ArgsSource() : SourceBase(ProviderClass::Cli, "cli") {}
 		ArgsSource(int argc, const char* const* argv);
 		explicit ArgsSource(std::vector<std::string> argv);
 		// подготовим кэш сопоставлений флагов командной строки

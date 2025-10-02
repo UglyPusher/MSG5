@@ -15,7 +15,7 @@ class EnvSource final : public SourceBase {
 public:
     // Префикс задаёт приложение (например, "MSG5_"). Он не пустой.
     explicit EnvSource(std::string prefix)
-        : SourceBase(SourceKind::Env, std::string("env:") + prefix)
+        : SourceBase(ProviderClass::Env, std::string("env:") + prefix)
         , prefix_(std::move(prefix)) {}
 
     // Подготовка к выборке: кэшируем env_names и предрассчитанные имена вида PREFIX+TO_ENV_KEY(key)

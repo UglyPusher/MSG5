@@ -1,0 +1,6 @@
+﻿{
+    "db.host": "file.local",
+    "db.user": "fileuser",
+    "db.password": "filepass",
+    "log.level": "debug"
+}

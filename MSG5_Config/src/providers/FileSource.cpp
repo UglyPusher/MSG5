@@ -8,7 +8,7 @@ namespace msg5::config {
 
     // По контракту FileSource «тупой»: путь задаётся извне и не подбирается.
     FileSource::FileSource(std::filesystem::path path)
-        : SourceBase(SourceKind::File, std::string("file:") + path.string())
+        : SourceBase(ProviderClass::File, std::string("file:") + path.string())
         , path_(std::move(path)) {}
 
     void FileSource::prepare(const CommandSpec& /*spec*/) {

@@ -5,7 +5,7 @@
 #include <vector>
 #include <filesystem>
 #include "msg5/config/source/IOptionsSource.h"  // IOptionsSource, IOptionsSourcePtr
-#include "msg5/config/OptionsSourceTypes.h"     // SourceKind (если нужно где-то снаружи)
+#include "msg5/config/OptionsSourceTypes.h"     // ProviderClass (если нужно где-то снаружи)
 
 namespace msg5::config {
 

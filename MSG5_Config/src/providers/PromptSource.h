@@ -5,7 +5,7 @@ namespace msg5::config {
     struct CommandSpec;  // forward
     class PromptSource final : public SourceBase {
     public:
-        PromptSource() : SourceBase(SourceKind::Stdin, "stdin") {}
+        PromptSource() : SourceBase(ProviderClass::Stdin, "stdin") {}
         
         // stdin не требует подготовки, но оставим метод для единообразия
         void prepare(const CommandSpec& /*spec*/) override {}

@@ -16,7 +16,7 @@ namespace msg5::config {
         virtual ~IOptionsSource() = default;
 
         // Тип источника (для origin/отчётов).
-        virtual SourceKind kind() const = 0;
+        virtual ProviderClass kind() const = 0;
 
         // Человекочитаемый идентификатор (напр. "cli", "file:D:\\cfg\\msg5.json", "env:MSG5_", "stdin").
         virtual std::string id() const = 0;

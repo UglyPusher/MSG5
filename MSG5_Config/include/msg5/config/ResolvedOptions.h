@@ -8,29 +8,17 @@
 #include <stdexcept>
 #include <algorithm>
 #include <cctype>
+#include "msg5/config/OptionsSourceTypes.h" // ValueSource
 
 namespace msg5::config {
 
     // ВАЖНО: форвард-декларация на верхнем уровне (не как вложенный тип)
     struct CommandSpec;
 
-    enum class Origin { Default, Cli, ConfigFile, Env, Stdin };
-
-    inline constexpr const char* to_string(Origin o) {
-        switch (o) {
-        case Origin::Default:    return "default";
-        case Origin::Cli:        return "cli";
-        case Origin::ConfigFile: return "config";
-        case Origin::Env:        return "env";
-        case Origin::Stdin:      return "stdin";
-        }
-        return "unknown";
-    }
-
     struct ResolvedOptions {
         std::string command;
         std::unordered_map<std::string, std::string> values;
-        std::unordered_map<std::string, Origin>      origins;
+        std::unordered_map<std::string, ValueSource>      value_sources;
 
         std::filesystem::path config_path;
         std::filesystem::path config_dir;
@@ -42,9 +30,9 @@ namespace msg5::config {
             return values.find(std::string(key)) != values.end();
         }
 
-        Origin origin(std::string_view key) const {
-            auto it = origins.find(std::string(key));
-            return it == origins.end() ? Origin::Default : it->second;
+        ValueSource origin(std::string_view key) const {
+            auto it = value_sources.find(std::string(key));
+            return it == value_sources.end() ? ValueSource::Default : it->second;
         }
 
         std::string get_str(std::string_view key, std::string_view def = "") const {

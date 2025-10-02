@@ -22,7 +22,12 @@ namespace msg5::config {
 
     FetchResult SourceBase::fetch(const CommandSpec& spec) noexcept {
         try {
-            return fetch_impl(spec);
+            auto r = fetch_impl(spec);
+            // если провайдер сам не проставил источник Ч задаЄм по механизму адаптера
+            if (r.source == ValueSource::Default) {
+                r.source = value_source_of(kind_);
+            }
+            return r;
         }
         catch (const std::exception& e) {
             emit(LogLevel::Error, "EXCEPTION", e.what());

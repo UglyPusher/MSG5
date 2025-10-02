@@ -5,9 +5,8 @@
 
 #include "msg5/config/Resolver.h"
 #include "msg5/config/CommandSpec.h"
-#include "msg5/config/ResolvedOptions.h" 
-#include "msg5/config/OptionsSourceTypes.h" // Origin, OptSecret
-#include "msg5/config/Sources.h"            // makeArgsSource/makeFileSource/makeEnvSource/makePromptSource
+#include "msg5/config/ResolvedOptions.h"      // ResolvedOptions (+ тянет ValueSource)
+#include "msg5/config/Sources.h"              // makeArgsSource/makeFileSource/makeEnvSource/makePromptSource
 
 using namespace msg5::config;
 
@@ -17,16 +16,12 @@ static void print_effective(const ResolvedOptions& ro) {
     for (const auto& kv : ro.values) {
         const std::string& k = kv.first;
         const std::string& v = kv.second;
-        Origin o = Origin::Default;
-        if (auto it = ro.origins.find(k); it != ro.origins.end()) {
-            o = it->second;
+
+        ValueSource src = ValueSource::Default;
+        if (auto it = ro.value_sources.find(k); it != ro.value_sources.end()) {
+            src = it->second;
         }
-        const char* oname =
-            (o == Origin::Cli) ? "Cli" :
-            (o == Origin::ConfigFile) ? "File" :
-            (o == Origin::Env) ? "Env" :
-            (o == Origin::Stdin) ? "Stdin" : "Default";
-        std::cout << "  " << k << " = " << v << "  [" << oname << "]\n";
+        std::cout << "  " << k << " = " << v << "  [" << to_string(src) << "]\n";
     }
 }
 
@@ -82,7 +77,7 @@ static ResolvedOptions run_basic(int argc, const char* argv[]) {
     sources.emplace_back(makeArgsSource(argc, argv));
     sources.emplace_back(makeFileSource("config/user.json")); // можно убрать/переименовать для проверки FILE_NOT_FOUND
     sources.emplace_back(makeEnvSource("MSG5_"));
-    sources.emplace_back(makePromptSource());
+    sources.emplace_back(makePromptSource());                 // не интерактивный, STDIN читается только из pipe/файла
 
     Resolver r(std::move(sources));
     return r.resolve(spec);
@@ -90,16 +85,14 @@ static ResolvedOptions run_basic(int argc, const char* argv[]) {
 
 // Небольшие sanity-проверки порядка слоёв (без тяжёлого фреймворка)
 static void simple_asserts(const ResolvedOptions& ro, bool expect_file_for_log_level) {
-    // Если в файле присутствовал log.level — ожидаем Origin::File
+    // Если в файле присутствовал log.level — ожидаем ValueSource::ConfigFile
     if (expect_file_for_log_level) {
-        auto it = ro.origins.find("log.level");
-        assert(it != ro.origins.end() && "log.level must exist");
-        assert(it->second == Origin::File && "log.level origin must be File");
+        auto it = ro.value_sources.find("log.level");
+        assert(it != ro.value_sources.end() && "log.level must exist");
+        assert(it->second == ValueSource::ConfigFile && "log.level source must be ConfigFile");
     }
 
     // Если CLI передан как --db.host=..., то он должен быть сильнее (ранний)
-    // Здесь просто проверяем наличие значения, Origin проверяется вручную при запуске с CLI.
-    // Пример запуска: ... --db.host=cli.local
     (void)ro; // чтобы не ругался компилятор, если не используем
 }
 
@@ -108,13 +101,12 @@ int main(int argc, const char* argv[]) {
     const ResolvedOptions ro = run_basic(argc, argv);
 
     // Считаем, что в репозитории присутствует пример config/user.json с полем log.level,
-    // тогда ожидаем Origin::File для log.level. При необходимости выставьте флаг в false.
+    // тогда ожидаем ValueSource::ConfigFile для log.level. При необходимости выставьте флаг в false.
     const bool expect_file_for_log_level = true;
     simple_asserts(ro, expect_file_for_log_level);
 
     print_effective(ro);
 
-    // Успех — код 0
     std::cout << "\nMSG5_Config_Tests done.\n";
     return 0;
 }

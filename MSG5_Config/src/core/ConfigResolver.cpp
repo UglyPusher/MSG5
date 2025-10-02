@@ -51,10 +51,10 @@ namespace msg5::config {
     static void set_if_empty(ResolvedOptions& out,
         const std::string& key,
         const std::string& val,
-        Origin o) {
+        ValueSource o) {
         if (!val.empty() && !out.has(key)) {
             out.values[key] = val;
-            out.origins[key] = o;
+            out.value_sources[key] = o;
         }
     }
 
@@ -161,7 +161,7 @@ namespace msg5::config {
                     throw std::runtime_error("Option " + flag + " requires a value");
                 }
 
-                set_if_empty(out, os->key, val, Origin::Cli);
+                set_if_empty(out, os->key, val, ValueSource::Cli);
             }
         }
     }
@@ -202,7 +202,7 @@ namespace msg5::config {
                 auto node = json_at_path(j, opt.json_path);
                 if (!node.has_value() || node->is_null()) continue;
                 std::string s = json_to_string(*node);
-                if (!s.empty()) set_if_empty(out, opt.key, s, Origin::ConfigFile);
+                if (!s.empty()) set_if_empty(out, opt.key, s, ValueSource::ConfigFile);
             }
         }
     }
@@ -238,7 +238,7 @@ namespace msg5::config {
 
             for (const auto& name : unique) {
                 if (auto v = safe_getenv(name)) {
-                    set_if_empty(out, opt.key, *v, Origin::Env);
+                    set_if_empty(out, opt.key, *v, ValueSource::Env);
                     out.used_env = true;
                     break;
                 }
@@ -278,7 +278,7 @@ namespace msg5::config {
             if (value.empty()) {
                 throw std::runtime_error("Empty value entered for required option: " + opt->key);
             }
-            set_if_empty(out, opt->key, value, Origin::Stdin);
+            set_if_empty(out, opt->key, value, ValueSource::Stdin);
             out.used_stdin = true;
         }
     }
@@ -307,7 +307,7 @@ namespace msg5::config {
         for (const auto& opt : spec.options) {
             if (!out.has(opt.key) && opt.default_value.has_value()) {
                 out.values[opt.key] = *opt.default_value;
-                out.origins[opt.key] = Origin::Default;
+                out.value_sources[opt.key] = ValueSource::Default;
             }
         }
 

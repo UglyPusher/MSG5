@@ -30,13 +30,13 @@ namespace msg5::config {
     /// Базовый класс-скелет. Не тянет реализацию провайдеров — только общая механика.
     class SourceBase : public IOptionsSource {
     public:
-        SourceBase(SourceKind kind, std::string id) noexcept
+        SourceBase(ProviderClass kind, std::string id) noexcept
             : kind_(kind), id_(std::move(id)) {
         }
         ~SourceBase() override = default;
 
         // IOptionsSource
-        SourceKind   kind() const override { return kind_; }
+        ProviderClass   kind() const override { return kind_; }
         std::string  id()   const override { return id_; }
 
         // no-throw обёртка: ловит любые исключения и конвертирует их в ERROR-событие.
@@ -53,7 +53,7 @@ namespace msg5::config {
         void emit(LogLevel lvl, std::string_view code, std::string_view message) const;
 
     private:
-        SourceKind         kind_;
+        ProviderClass         kind_;
         std::string        id_;
         std::vector<LogSink> sinks_;
     };
