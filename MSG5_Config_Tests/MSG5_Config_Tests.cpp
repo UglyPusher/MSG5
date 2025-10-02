@@ -8,6 +8,8 @@
 #include "msg5/config/ResolvedOptions.h"      // ResolvedOptions (+ тянет ValueSource)
 #include "msg5/config/Sources.h"              // makeArgsSource/makeFileSource/makeEnvSource/makePromptSource
 
+#include <filesystem>
+
 using namespace msg5::config;
 
 
@@ -108,6 +110,11 @@ static void simple_asserts(const ResolvedOptions& ro, bool expect_file_for_log_l
 }
 
 int main(int argc, const char* argv[]) {
+
+    std::cout << "[cwd] " << std::filesystem::current_path().string() << "\n";
+    const auto p = std::filesystem::path("config/user.json");
+    std::cout << "[file] " << p.string() << " exists=" << std::filesystem::exists(p) << "\n";
+
     // Сценарий: смотрим, что собралось, и печатаем
     const ResolvedOptions ro = run_basic(argc, argv);
 

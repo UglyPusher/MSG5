@@ -74,9 +74,14 @@ namespace msg5::config {
                 const std::string name = !opt.json_path.empty() ? opt.json_path : opt.key;
                 if (name.empty()) continue;
                 const bool secret = ((opt.flags & OptSecret) != 0);
-                const std::string prompt = name + (secret ? " (secret)" : "") + " : ";
+                const std::string prompt = name + (secret ? " (secret, Enter=skip)" : " (Enter=skip)") + " : ";
                 std::string val = secret ? read_line_secret(prompt) : read_line_visible(prompt);
-                if (!val.empty()) out.kv.emplace(opt.key, std::move(val));
+                if (!val.empty()) {
+                    out.kv.emplace(opt.key, val);
+                    // лёгкая телеметрия: показываем, что приняли значение
+                    emit(LogLevel::Info, "STDIN_PROMPT_VALUE",
+                        name + " -> " + opt.key + (secret ? " = ****" : " = " + val));
+                }
             }
             return out;
         }

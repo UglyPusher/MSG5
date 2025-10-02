@@ -2,6 +2,8 @@
 #include "msg5/config/ResolvedOptions.h"
 #include "msg5/config/source/IOptionsSource.h" // prepare(), fetch(), kind()
 #include "msg5/config/CommandSpec.h"
+#include <iostream>
+
 // #include "Validators.h" // позже
 // #include "DefaultsFiller.h" // позже
 
@@ -36,23 +38,35 @@ ResolvedOptions Resolver::resolve(const CommandSpec& spec) {
     for (auto& s : sources_) {
         // отдаём источнику только «дыры», чтобы он не тратил усилия
         const CommandSpec need = filter_missing(spec, out.values);
+        std::cout << "[resolver] ask " << to_string(s->kind())
+            << " need=" << need.options.size()
+            << " already=" << out.values.size() << "\n";
         if (need.options.empty()) {
+            std::cout << "[resolver] skip " << to_string(s->kind()) << " (no holes)\n";
             continue; // уже всё закрыли более ранними слоями
+            
         }
         auto r = s->fetch(need);
+        std::cout << "[resolver] got from " << to_string(s->kind())
+            << " kv=" << r.kv.size()
+            << " src=" << to_string(r.source) << "\n";
+
+
         const ValueSource src_origin = r.source; // источник приходит от провайдера
 
         for (const auto& [k, v] : r.kv) {
             // «Ранний сильнее»: если ключ уже установлен ранее — не трогаем
             if (out.values.find(k) == out.values.end()) {
                 out.values.emplace(k, v);
-                out.value_sources.emplace(k, src_origin);
+                //out.value_sources.emplace(k, src_origin);
+                out.value_sources.emplace(k, r.source);
             }
             // иначе оставляем предыдущее значение и его origin
         }
         
-        // Ранний выход: если закрыли все опции, дальше нет смысла опрашивать источники
+        // Ранний выход: если закрыли все опции, дальше нет смысла опрашивать
         if (out.values.size() >= spec.options.size()) {
+            std::cout << "[resolver] done (all " << out.values.size() << " collected)\n";
             break;
         }
     }
