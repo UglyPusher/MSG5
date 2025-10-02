@@ -10,6 +10,8 @@
 
 using namespace msg5::config;
 
+
+
 // Мини-утилита печати результата
 static void print_effective(const ResolvedOptions& ro) {
     std::cout << "=== Effective config ===\n";
@@ -73,11 +75,20 @@ static CommandSpec make_spec() {
 static ResolvedOptions run_basic(int argc, const char* argv[]) {
     CommandSpec spec = make_spec();
 
+    // лёгкий разбор флага --prompt (включает интерактивный режим PromptSource)
+    bool prompt_interactive = true;
+    for (int i = 1; i < argc; ++i) {
+        if (std::string_view(argv[i]) == "--no-prompt") {
+            prompt_interactive = false;
+        }
+    }
+
     std::vector<IOptionsSourcePtr> sources;
     sources.emplace_back(makeArgsSource(argc, argv));
     sources.emplace_back(makeFileSource("config/user.json")); // можно убрать/переименовать для проверки FILE_NOT_FOUND
     sources.emplace_back(makeEnvSource("MSG5_"));
-    sources.emplace_back(makePromptSource());                 // не интерактивный, STDIN читается только из pipe/файла
+    //sources.emplace_back(makePromptSource());                 // не интерактивный, STDIN читается только из pipe/файла
+    sources.emplace_back(makePromptSource(prompt_interactive)); // при --no-prompt: без построчного опроса недостающих ключей
 
     Resolver r(std::move(sources));
     return r.resolve(spec);

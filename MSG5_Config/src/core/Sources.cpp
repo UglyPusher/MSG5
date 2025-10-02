@@ -25,8 +25,8 @@ namespace msg5::config {
         return std::make_unique<EnvSource>(std::move(prefix));
     }
 
-    IOptionsSourcePtr makePromptSource() {
-        return std::make_unique<PromptSource>();
+    IOptionsSourcePtr makePromptSource(bool interactive) {
+        return std::make_unique<PromptSource>(interactive);
     }
 
 } // namespace msg5::config

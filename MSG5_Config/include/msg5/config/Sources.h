@@ -20,6 +20,6 @@ namespace msg5::config {
 	IOptionsSourcePtr makeEnvSource(std::string prefix);
 
 	// STDIN
-	IOptionsSourcePtr makePromptSource();
+	IOptionsSourcePtr makePromptSource(bool interactive = true);
 
 } // namespace msg5::config
