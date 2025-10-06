@@ -24,6 +24,7 @@ namespace msg5::config {
             // сопоставляем все заявленные cli_flags с каноническим ключом
             for (const auto& fl : opt.cli_flags) {
                 if (!fl.empty()) flag_to_key_.emplace(fl, opt.key);
+                flag_to_key_.emplace(normalize_flag(fl), opt.key);
             }
             key_flags_.emplace(opt.key, opt.flags);
         }
@@ -38,7 +39,9 @@ namespace msg5::config {
 
         // Отдаём только ключи, которые есть в спецификации (через кэш flag_to_key_)
         for (const auto& [flag, val] : raw) {
-            auto it = flag_to_key_.find(flag);
+            //auto it = flag_to_key_.find(flag);
+            const std::string norm = normalize_flag(flag);
+            auto it = flag_to_key_.find(norm);
             if (it == flag_to_key_.end()) {
                 // неизвестный флаг — просто сообщим (по ТЗ: игнор/INFO)
                 emit(LogLevel::Info, "CLI_FLAG_UNKNOWN", flag);

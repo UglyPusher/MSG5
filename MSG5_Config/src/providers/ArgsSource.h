@@ -23,5 +23,11 @@ namespace msg5::config {
 		std::unordered_map<std::string, std::string> flag_to_key_;
 		// "db.host" -> flags (OptSecret и др.)
 		std::unordered_map<std::string, unsigned>     key_flags_;
+
+		static std::string normalize_flag(std::string_view f) {
+			size_t i = 0;
+			while (i < f.size() && (f[i] == '-' || f[i] == '/')) ++i;
+			return std::string(f.substr(i));
+		}
 	};
 }
