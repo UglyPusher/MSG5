@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "env_utils.h"
 #include <cstdlib>
+#include <cctype>
 
 
 namespace msg5::config {

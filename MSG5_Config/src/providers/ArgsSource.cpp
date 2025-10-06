@@ -5,32 +5,44 @@
 
 namespace msg5::config {
 
-    ArgsSource::ArgsSource(int argc, const char* const* argv)
-        : SourceBase(ProviderClass::Cli, "cli") {
-        argv_.reserve(static_cast<size_t>(argc));
+    ArgsSource::ArgsSource(int argc, const char* const* argv, LogLevel min) noexcept
+        : SourceBase(ProviderClass::Cli, "cli")
+    {
+        set_min_level(min); 
+        argv_.reserve(argc > 0 ? argc - 1 : 0);
+        //argv_.reserve(argc);
         for (int i = 0; i < argc; ++i) {
-            argv_.emplace_back(argv[i] ? argv[i] : "");
+            if (i == 0) continue; // пропускаем имя процесса
+            argv_.emplace_back(argv[i] ? std::string(argv[i]) : std::string{});
         }
     }
 
-    ArgsSource::ArgsSource(std::vector<std::string> argv)
-        : SourceBase(ProviderClass::Cli, "cli"), argv_(std::move(argv)) {
+    ArgsSource::ArgsSource(std::vector<std::string> argv, LogLevel min) noexcept
+        : SourceBase(ProviderClass::Cli, "cli"), argv_(std::move(argv))
+    {
+        set_min_level(min);
     }
 
-    void ArgsSource::prepare(const CommandSpec& spec) {
+    void ArgsSource::prepare(const CommandSpec& spec) noexcept {
         flag_to_key_.clear();
         key_flags_.clear();
+
+        flag_to_key_.reserve(flag_to_key_.size() + spec.options.size() * 2);
+        key_flags_.reserve(key_flags_.size() + spec.options.size());
+
         for (const auto& opt : spec.options) {
             // сопоставляем все заявленные cli_flags с каноническим ключом
             for (const auto& fl : opt.cli_flags) {
-                if (!fl.empty()) flag_to_key_.emplace(fl, opt.key);
-                flag_to_key_.emplace(normalize_flag(fl), opt.key);
+                if (!fl.empty()) {
+                    flag_to_key_.emplace(fl, opt.key);
+                    flag_to_key_.emplace(normalize_flag(fl), opt.key);
+                }
             }
             key_flags_.emplace(opt.key, opt.flags);
         }
     }
 
-    FetchResult ArgsSource::fetch_impl(const CommandSpec& /*spec*/) {
+    FetchResult ArgsSource::fetch_impl(const CommandSpec& /*spec*/) noexcept {
         FetchResult out;
         
         if (argv_.empty()) return out;
@@ -44,11 +56,15 @@ namespace msg5::config {
             auto it = flag_to_key_.find(norm);
             if (it == flag_to_key_.end()) {
                 // неизвестный флаг — просто сообщим (по ТЗ: игнор/INFO)
-                emit(LogLevel::Info, "CLI_FLAG_UNKNOWN", flag);
+                emit(LogLevel::Debug, "CLI_FLAG_UNKNOWN", flag);
                 continue;
             }
             const std::string & key = it->second;
-            const bool secret = ((key_flags_.count(key) ? key_flags_.at(key) : 0) & OptSecret) != 0;
+            //const bool secret = ((key_flags_.count(key) ? key_flags_.at(key) : 0) & OptSecret) != 0;
+            unsigned flags = 0;
+            if (auto itf = key_flags_.find(key); itf != key_flags_.end()) flags = itf->second;
+            const bool secret = (flags & OptSecret) != 0;
+            
             out.kv.emplace(key, val);
             emit(LogLevel::Info,
                 "CLI_FLAG_ACCEPTED",

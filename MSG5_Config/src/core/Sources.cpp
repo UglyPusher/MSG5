@@ -9,24 +9,23 @@
 
 namespace msg5::config {
 
-    IOptionsSourcePtr makeArgsSource(int argc, const char* const* argv) {
-        return std::make_unique<ArgsSource>(argc, argv);
-    }
+    IOptionsSourcePtr makeArgsSource(int argc, const char* const* argv
+        , LogLevel min) { return std::make_unique<ArgsSource>(argc, argv, min); }
 
     IOptionsSourcePtr makeArgsSource(std::vector<std::string> argv) {
         return std::make_unique<ArgsSource>(std::move(argv));
     }
 
-    IOptionsSourcePtr makeFileSource(std::filesystem::path path) {
-        return std::make_unique<FileSource>(std::move(path));
+    IOptionsSourcePtr makeFileSource(const std::filesystem::path& p, LogLevel min) {
+        return std::make_unique<FileSource>(p, min);
     }
 
-    IOptionsSourcePtr makeEnvSource(std::string prefix) {
-        return std::make_unique<EnvSource>(std::move(prefix));
+    IOptionsSourcePtr makeEnvSource(std::string prefix, LogLevel min) { 
+        return std::make_unique<EnvSource>(std::string(prefix), min); 
     }
 
-    IOptionsSourcePtr makePromptSource(bool interactive) {
-        return std::make_unique<PromptSource>(interactive);
+    IOptionsSourcePtr makePromptSource(bool interactive, LogLevel min) {
+        return std::make_unique<PromptSource>(interactive, min);
     }
 
 } // namespace msg5::config

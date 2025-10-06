@@ -3,19 +3,20 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <string_view>
 
 namespace msg5::config {
 	struct CommandSpec;  // forward
 	
 	class ArgsSource final : public SourceBase {
 	public:
-		ArgsSource() : SourceBase(ProviderClass::Cli, "cli") {}
-		ArgsSource(int argc, const char* const* argv);
-		explicit ArgsSource(std::vector<std::string> argv);
+		//ArgsSource() : SourceBase(ProviderClass::Cli, "cli") {}
+		explicit ArgsSource(int argc, const char* const* argv, LogLevel min = LogLevel::Trace) noexcept;
+		explicit ArgsSource(std::vector<std::string> argv, LogLevel min = LogLevel::Trace) noexcept;
 		// подготовим кэш сопоставлений флагов командной строки
-		void prepare(const CommandSpec & spec) override;
+		void prepare(const CommandSpec & spec) noexcept override;
 		// Реальная работа источника (SourceBase::fetch no-throw вызовет это)
-		FetchResult fetch_impl(const CommandSpec & spec) override;
+		FetchResult fetch_impl(const CommandSpec & spec) noexcept override;
 	
 	private:
 		std::vector<std::string> argv_;

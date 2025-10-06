@@ -10,14 +10,14 @@ namespace msg5::config {
     class FileSource final : public SourceBase {
     public:
         // Базовый «тупой» источник: путь задаётся снаружи и неизменяем.
-        explicit FileSource(std::filesystem::path path);
+        explicit FileSource(std::filesystem::path p, LogLevel min = LogLevel::Trace) noexcept;
 
         // Ничего не готовим: источник просто читает один JSON без магии.
-        void prepare(const CommandSpec& /*spec*/) override;
+        void prepare(const CommandSpec& /*spec*/) noexcept override;
 
     protected:
         // Реальная работа источника (SourceBase::fetch no-throw вызовет это).
-        FetchResult fetch_impl(const CommandSpec& spec) override;
+        FetchResult fetch_impl(const CommandSpec& spec) noexcept override;
 
     private:
         std::filesystem::path path_;

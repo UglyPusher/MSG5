@@ -3,30 +3,77 @@
 #include "../util/fs_utils.h"
 #include "../util/json_utils.h"
 #include "msg5/config/CommandSpec.h"
+#include <string_view>
 
 #include <iostream>
 #include <filesystem>
 
 namespace msg5::config {
 
-    // По контракту FileSource «тупой»: путь задаётся извне и не подбирается.
-    FileSource::FileSource(std::filesystem::path path)
-        : SourceBase(ProviderClass::File, std::string("file:") + path.string())
-        , path_(std::move(path)) {}
+    // Возвращает "очищенное" превью для логов (байтовая длина, без анализа UTF-8)
+    static std::string sanitize_preview(std::string_view s, std::size_t max_len = 160) noexcept {
+        const bool need_ellipsis = s.size() > max_len;
+        if (s.size() > max_len) s = s.substr(0, max_len);
 
-    void FileSource::prepare(const CommandSpec& /*spec*/) {
+        std::string out;
+        out.reserve(s.size());
+
+        // 1) Заменяем ASCII-контрольные символы на пробелы
+        for (unsigned char c : s) {
+            if (c < 0x20 || c == 0x7F) {
+                out.push_back(' ');
+            }
+            else {
+                out.push_back(static_cast<char>(c));
+            }
+        }
+
+        // 2) Сжимаем повторы пробелов (включая табы/переносы, которые уже стали пробелами)
+        std::string compact;
+        compact.reserve(out.size());
+        bool prev_space = false;
+        for (char ch : out) {
+            const bool is_space = (ch == ' ');
+            if (is_space) {
+                if (!prev_space) compact.push_back(' ');
+            }
+            else {
+                compact.push_back(ch);
+            }
+            prev_space = is_space;
+        }
+
+        // 3) Трим по краям
+        auto l = compact.find_first_not_of(' ');
+        auto r = compact.find_last_not_of(' ');
+        std::string trimmed = (l == std::string::npos) ? std::string{} : compact.substr(l, r - l + 1);
+
+        // 4) Добавляем многоточие, если исходник длиннее max_len
+        if (need_ellipsis) trimmed += "…";
+        return trimmed;
+    }
+
+    // По контракту FileSource «тупой»: путь задаётся извне и не подбирается.
+    FileSource::FileSource(std::filesystem::path path, LogLevel min) noexcept
+        : SourceBase(ProviderClass::File, std::string("file:") + path.string())
+        , path_(std::move(path)) {
+        set_min_level(min);
+    }
+
+    void FileSource::prepare(const CommandSpec& /*spec*/) noexcept {
         emit(LogLevel::Debug, "FileSource::prepare", "Run");
         // Ничего не готовим: просто читаем один JSON-файл без магии.
     }
 
     // SourceBase::fetch(no-throw) вызывает это место.
-    FetchResult FileSource::fetch_impl(const CommandSpec & spec) {
+    FetchResult FileSource::fetch_impl(const CommandSpec & spec) noexcept {
         FetchResult out;
 
         const std::string path = path_.string();
-        emit(LogLevel::Info, "FileSource::fetch_impl run", path);
-        if (!std::filesystem::exists(path)) {
+        emit(LogLevel::Debug, "FileSource::fetch_impl run", path);
+        if (!std::filesystem::exists(path_)) {
             emit(LogLevel::Warn, "FILE_NOT_FOUND", path);
+            return out;
         }
         else { 
             emit(LogLevel::Debug, "FILE_IS_FOUND", path);
@@ -46,9 +93,10 @@ namespace msg5::config {
         emit(LogLevel::Info, "FILE_READ_OK", path);
 
         {
-            std::string head = text.substr(0, std::min<size_t>(text.size(), 160));
+            //std::string head = text.substr(0, std::min<size_t>(text.size(), 160));
+            const auto head = sanitize_preview(text, 160);
             emit(LogLevel::Debug, "FILE_DEBUG_TEXT",
-                +"size=" + std::to_string(text.size()) + " head=" + head);
+                "size=" + std::to_string(text.size()) + " head=" + head);
         }
 
         
@@ -102,5 +150,6 @@ namespace msg5::config {
         emit(LogLevel::Info, "FILE_KEYS_EMITTED", std::to_string(out.kv.size()));
         return out;
     }
+    
 
 }

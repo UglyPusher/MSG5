@@ -1,4 +1,5 @@
-﻿#include "pch.h"
+﻿#pragma once
+#include "pch.h"
 #include "PromptSource.h"
 #include "../util/json_utils.h"
 #include "msg5/config/CommandSpec.h"
@@ -60,7 +61,7 @@ namespace msg5::config {
         return s.empty() ? std::string{} : std::string(s.size(), '*');
     }
     
-    FetchResult PromptSource::fetch_impl(const CommandSpec & spec) {
+    FetchResult PromptSource::fetch_impl(const CommandSpec & spec) noexcept {
         FetchResult out;
 
         // Если stdin — консоль (TTY)

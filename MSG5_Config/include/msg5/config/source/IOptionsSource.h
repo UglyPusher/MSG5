@@ -23,7 +23,7 @@ namespace msg5::config {
 
         // Опциональная подготовка под конкретную спецификацию (кэш маппингов и т.п.).
         // Резолвер вызывает один раз ДО первого fetch(spec). Исключения бросать не рекомендуется.
-        virtual void prepare(const CommandSpec& /*spec*/) {}
+        virtual void prepare(const CommandSpec& /*spec*/) noexcept {}
 
         // Главный вызов: получить пары key->string для ключей из spec.
         // ВАЖНО: noexcept — любые ошибки источник конвертирует во внутренние события/логи

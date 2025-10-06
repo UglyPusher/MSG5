@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <atomic>
 #include "msg5/config/OptionsSourceTypes.h"
 #include "msg5/config/source/IOptionsSource.h"
 
@@ -45,9 +46,13 @@ namespace msg5::config {
         // Подписки на события (локально в источнике)
         void subscribe(LogSink sink) { sinks_.push_back(std::move(sink)); }
 
+        // локальный «шумогейт» конкретного источника
+        void set_min_level(LogLevel lvl) noexcept;
+        LogLevel min_level() const noexcept;
+
     protected:
         // Реализация источника (наследник обязан определить)
-        virtual FetchResult fetch_impl(const CommandSpec& spec) = 0;
+        [[nodiscard]] virtual FetchResult fetch_impl(const CommandSpec& spec) noexcept = 0;
 
         // Удобный эмиттер событий
         void emit(LogLevel lvl, std::string_view code, std::string_view message) const;
@@ -56,6 +61,7 @@ namespace msg5::config {
         ProviderClass         kind_;
         std::string        id_;
         std::vector<LogSink> sinks_;
+        std::atomic<LogLevel> min_level_{ LogLevel::Trace };
     };
 
 } // namespace msg5::config

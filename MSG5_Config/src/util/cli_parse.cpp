@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "cli_parse.h"
 #include <cctype>
+#include <cstring>
 
 using namespace std;
 

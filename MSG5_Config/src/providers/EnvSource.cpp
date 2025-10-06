@@ -2,7 +2,7 @@
 #include "EnvSource.h"
 
 #include "msg5/config/CommandSpec.h"  // CommandSpec, OptionSpec
-#include "src/util/env_utils.h"                // env_exists, safe_getenv, to_env_key
+#include "../util/env_utils.h"                // env_exists, safe_getenv, to_env_key
 
 #include <utility>
 
@@ -17,10 +17,14 @@ namespace msg5::config {
 
     // --- lifecycle -------------------------------------------------------------
 
-    void EnvSource::prepare(const CommandSpec& spec) {
+    void EnvSource::prepare(const CommandSpec& spec) noexcept {
         explicit_env_to_key_.clear();
         key_to_prefixed_env_.clear();
         key_flags_.clear();
+
+        explicit_env_to_key_.reserve(explicit_env_to_key_.size() + spec.options.size() * 2);
+        key_to_prefixed_env_.reserve(key_to_prefixed_env_.size() + spec.options.size());
+        key_flags_.reserve(key_flags_.size() + spec.options.size());
 
         // Проходим по всем опциям спецификации и кэшируем:
         // 1) явные имена переменных окружения (env_names -> opt.key)
@@ -42,13 +46,13 @@ namespace msg5::config {
             }
 
             // 3) Флаги (для секретности и др.)
-            key_flags_.emplace(opt.key, static_cast<int>(opt.flags));
+            key_flags_.emplace(opt.key, opt.flags);
         }
     }
 
     // --- fetching --------------------------------------------------------------
 
-    FetchResult EnvSource::fetch_impl(const CommandSpec& spec) {
+    FetchResult EnvSource::fetch_impl(const CommandSpec& spec) noexcept {
         FetchResult out;
 
         // 1) Сначала пробуем явные env_names
@@ -94,7 +98,7 @@ namespace msg5::config {
             }
             else {
                 // Информируем (низкий уровень), что переменная не найдена — это не ошибка.
-                emit(LogLevel::Info, "ENV_NOT_FOUND", env_name);
+                emit(LogLevel::Debug, "ENV_NOT_FOUND", env_name);
             }
         }
 

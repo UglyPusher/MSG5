@@ -37,7 +37,7 @@ namespace msg5::config::json {
 
         // Регекс на пары "key" : ( "str" | number | true | false | null )
         // Простая, но надёжная для плоских случаев
-        std::regex re(
+        static const std::regex re(
             R"###("((?:[^"\\]|\\.)*)"\s*:\s*(?:"((?:[^"\\]|\\.)*)"|(-?\d+(?:\.\d+)?)|(true|false)|(null)))###",
             std::regex::optimize);
 

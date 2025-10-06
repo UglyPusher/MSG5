@@ -13,17 +13,20 @@ struct OptionSpec; // если нужно в prepare (необязательно
 
 class EnvSource final : public SourceBase {
 public:
-    // Префикс задаёт приложение (например, "MSG5_"). Он не пустой.
-    explicit EnvSource(std::string prefix)
+    // Префикс задаёт приложение (например, "MSG5_"). Может быть пустым — тогда шаг с PREFIX пропускается.
+    explicit EnvSource(std::string prefix, LogLevel min) noexcept
         : SourceBase(ProviderClass::Env, std::string("env:") + prefix)
-        , prefix_(std::move(prefix)) {}
+        , prefix_(std::move(prefix))
+    {
+        set_min_level(min);
+    }
 
     // Подготовка к выборке: кэшируем env_names и предрассчитанные имена вида PREFIX+TO_ENV_KEY(key)
-    void prepare(const CommandSpec& spec) override;
+    void prepare(const CommandSpec& spec) noexcept override;
 
 protected:
     // Реальная работа источника (SourceBase::fetch no-throw вызовет это)
-    FetchResult fetch_impl(const CommandSpec& spec) override;
+    FetchResult fetch_impl(const CommandSpec& spec) noexcept override;
 
 private:
     // Входные параметры / кэш
@@ -36,7 +39,7 @@ private:
     std::unordered_map<std::string, std::string> key_to_prefixed_env_;
 
     // Флаги опций по ключу (для маскирования и др.)
-    std::unordered_map<std::string, int> key_flags_;
+    std::unordered_map<std::string, unsigned> key_flags_;
 };
 
 } // namespace msg5::config
