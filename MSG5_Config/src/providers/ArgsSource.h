@@ -30,5 +30,7 @@ namespace msg5::config {
 			while (i < f.size() && (f[i] == '-' || f[i] == '/')) ++i;
 			return std::string(f.substr(i));
 		}
+		static std::vector<std::pair<std::string, std::string>>
+			parse_argv_pairs(const std::vector<std::string>& argv);
 	};
 }

@@ -9,28 +9,22 @@
 #include "msg5/config/Sources.h"              // makeArgsSource/makeFileSource/makeEnvSource/makePromptSource
 
 #include <filesystem>
-#include "msg5/config/source/SourceBase.h"  // LogEvent, LogLevel, SourceBase::subscribe
+#include "msg5/config/logging/Logger.h"      // LogEvent, LogLevel
 
 using namespace msg5::config;
 
 // Подписка на события всех источников: печать в консоль
-auto attach_logging = [](std::vector<IOptionsSourcePtr>& vec) {
-    for (auto& sp : vec) {
-        if (auto* sb = dynamic_cast<SourceBase*>(sp.get())) {
-            sb->subscribe([](const LogEvent& ev) {
-                const char* lvl =
-                    ev.level == LogLevel::Error ? "ERR" :
-                    ev.level == LogLevel::Warn ? "WARN" :
-                    ev.level == LogLevel::Info ? "INFO" :
-                    ev.level == LogLevel::Debug ? "DBG" : "TRC";
-                std::cout << "[log] " << lvl
-                    << " src=" << ev.source_id
-                    << " code=" << ev.code
-                    << " msg=" << ev.message << "\n";
-                });
-        }
-    }
-    };
+static inline void print_log(const LogEvent & ev) {
+    const char* lvl =
+        ev.level == LogLevel::Error ? "ERR" :
+        ev.level == LogLevel::Warn ? "WARN" :
+        ev.level == LogLevel::Info ? "INFO" :
+        ev.level == LogLevel::Debug ? "DBG" : "TRC";
+    std::cout << "[log] " << lvl
+        << " src=" << ev.source_id
+        << " code=" << ev.code
+        << " msg=" << ev.message << "\n";
+}
 
 
 // Мини-утилита печати результата
@@ -108,12 +102,12 @@ static ResolvedOptions run_basic(int argc, const char* argv[]) {
     std::vector<IOptionsSourcePtr> sources;
     sources.emplace_back(makeArgsSource(argc, argv));
     sources.emplace_back(makeFileSource("config/user.json")); // можно убрать/переименовать для проверки FILE_NOT_FOUND
-    //sources.emplace_back(makeEnvSource("MSG5_"));
-    //sources.emplace_back(makePromptSource());                 // не интерактивный, STDIN читается только из pipe/файла
-    //sources.emplace_back(makePromptSource(prompt_interactive)); // при --no-prompt: без построчного опроса недостающих ключей
-
-    attach_logging(sources);
+    sources.emplace_back(makeEnvSource("MSG5_"));
+    sources.emplace_back(makePromptSource(prompt_interactive));
+    
     Resolver r(std::move(sources));
+    r.set_min_level(LogLevel::Trace); // видеть всё, как в вашем выводе
+    r.subscribe([](const LogEvent& ev) { print_log(ev); });
     return r.resolve(spec);
 }
 

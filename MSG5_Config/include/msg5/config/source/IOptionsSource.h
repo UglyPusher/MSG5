@@ -8,6 +8,7 @@
 #include <memory>              // std::unique_ptr
 #include <string>              // std::string (для id())
 #include "msg5/config/OptionsSourceTypes.h"
+#include "msg5/config/logging/Logger.h" // LogLevel, LogEvent, LogSink
 
 namespace msg5::config {
 
@@ -36,6 +37,9 @@ namespace msg5::config {
         IOptionsSource& operator=(const IOptionsSource&) = delete;
         IOptionsSource(IOptionsSource&&) = delete;
         IOptionsSource& operator=(IOptionsSource&&) = delete;
+
+        virtual void set_min_level(LogLevel l) noexcept = 0;
+        virtual void subscribe(LogSink s) = 0;
     };
 
     // Удобный алиас владения источником

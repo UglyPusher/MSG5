@@ -62,6 +62,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\msg5\config\CommandSpec.h" />
+    <ClInclude Include="include\msg5\config\logging\Logger.h" />
     <ClInclude Include="include\msg5\config\OptionsSourceTypes.h" />
     <ClInclude Include="include\msg5\config\ResolvedOptions.h" />
     <ClInclude Include="include\msg5\config\Resolver.h" />
@@ -69,7 +70,6 @@
     <ClInclude Include="include\msg5\config\source\IOptionsSource.h" />
     <ClInclude Include="include\msg5\config\source\SourceBase.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="src\core\ConfigResolver.h" />
     <ClInclude Include="src\providers\ArgsSource.h" />
     <ClInclude Include="src\providers\EnvSource.h" />
     <ClInclude Include="src\providers\FileSource.h" />
@@ -84,7 +84,7 @@
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\core\ConfigResolver.cpp" />
+    <ClCompile Include="src\core\Logger.cpp" />
     <ClCompile Include="src\core\MergeEngine.cpp" />
     <ClCompile Include="src\core\Resolver.cpp" />
     <ClCompile Include="src\core\SourceBase.cpp" />

@@ -9,31 +9,21 @@
 #include <vector>
 #include <functional>
 #include <atomic>
-#include "msg5/config/OptionsSourceTypes.h"
+#include <string_view>
+
+#include "msg5/config/logging/Logger.h"
+//#include "msg5/config/OptionsSourceTypes.h"
 #include "msg5/config/source/IOptionsSource.h"
 
 namespace msg5::config {
 
-    // Уровни лог-событий источника
-    enum class LogLevel : unsigned char { Error, Warn, Info, Debug, Trace };
-
-    // Событие источника (для диагностики/телеметрии)
-    struct LogEvent {
-        LogLevel    level{};
-        std::string code;        // короткий код: FILE_NOT_FOUND, ENV_READ_OK, CLI_FLAG_UNKNOWN, ...
-        std::string message;     // человекочитаемое сообщение
-        std::string source_id;   // откуда прилетело (id())
-    };
-
-    // Подписчик на события источника
-    using LogSink = std::function<void(const LogEvent&)>;
 
     /// Базовый класс-скелет. Не тянет реализацию провайдеров — только общая механика.
     class SourceBase : public IOptionsSource {
     public:
-        SourceBase(ProviderClass kind, std::string id) noexcept
-            : kind_(kind), id_(std::move(id)) {
-        }
+        explicit SourceBase(ProviderClass k, std::string id)
+            : kind_(k), id_(std::move(id)), logger_(id_, LogLevel::Info) {}
+
         ~SourceBase() override = default;
 
         // IOptionsSource
@@ -43,25 +33,22 @@ namespace msg5::config {
         // no-throw обёртка: ловит любые исключения и конвертирует их в ERROR-событие.
         FetchResult fetch(const CommandSpec& spec) noexcept final;
 
-        // Подписки на события (локально в источнике)
-        void subscribe(LogSink sink) { sinks_.push_back(std::move(sink)); }
-
-        // локальный «шумогейт» конкретного источника
-        void set_min_level(LogLevel lvl) noexcept;
-        LogLevel min_level() const noexcept;
+        void set_min_level(LogLevel l) noexcept override { logger_.set_min(l); }
+        void subscribe(LogSink s) override { logger_.subscribe(std::move(s)); }
 
     protected:
         // Реализация источника (наследник обязан определить)
         [[nodiscard]] virtual FetchResult fetch_impl(const CommandSpec& spec) noexcept = 0;
 
-        // Удобный эмиттер событий
-        void emit(LogLevel lvl, std::string_view code, std::string_view message) const;
+        // Проксируем в общий Logger
+        void emit(LogLevel lvl, std::string_view code, std::string_view msg) const {
+            logger_.emit(lvl, code, msg);
+        }
 
     private:
-        ProviderClass         kind_;
+        ProviderClass      kind_;
         std::string        id_;
-        std::vector<LogSink> sinks_;
-        std::atomic<LogLevel> min_level_{ LogLevel::Trace };
+        Logger             logger_;
     };
 
 } // namespace msg5::config
