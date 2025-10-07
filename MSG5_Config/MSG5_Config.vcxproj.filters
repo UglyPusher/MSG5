@@ -51,9 +51,6 @@
     <ClInclude Include="include\msg5\config\CommandSpec.h">
       <Filter>msg5%255cconfig</Filter>
     </ClInclude>
-    <ClInclude Include="include\msg5\config\errors.h">
-      <Filter>msg5%255cconfig</Filter>
-    </ClInclude>
     <ClInclude Include="include\msg5\config\OptionsSourceTypes.h">
       <Filter>msg5%255cconfig</Filter>
     </ClInclude>

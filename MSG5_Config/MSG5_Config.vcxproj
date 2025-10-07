@@ -62,7 +62,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\msg5\config\CommandSpec.h" />
-    <ClInclude Include="include\msg5\config\errors.h" />
     <ClInclude Include="include\msg5\config\OptionsSourceTypes.h" />
     <ClInclude Include="include\msg5\config\ResolvedOptions.h" />
     <ClInclude Include="include\msg5\config\Resolver.h" />

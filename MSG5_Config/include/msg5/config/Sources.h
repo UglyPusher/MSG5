@@ -11,17 +11,16 @@
 namespace msg5::config {
 
 	// CLI
-	IOptionsSourcePtr makeArgsSource(int argc, const char* const* argv,
-		LogLevel min = LogLevel::Trace);
-	IOptionsSourcePtr makeEnvSource(const char* prefix,
-		LogLevel min = LogLevel::Trace);
+	[[nodiscard]] IOptionsSourcePtr makeArgsSource(int argc, const char* const* argv,
+		LogLevel min = LogLevel::Trace) noexcept;
 
-	// FILE
-	IOptionsSourcePtr makeFileSource(const std::filesystem::path& p,
-		LogLevel min = LogLevel::Trace);
+	[[nodiscard]] IOptionsSourcePtr makeEnvSource(std::string_view prefix,
+		LogLevel min = LogLevel::Trace) noexcept;
 
-	// STDIN
-	IOptionsSourcePtr makePromptSource(bool interactive = false,
-		LogLevel min = LogLevel::Trace);
+	[[nodiscard]] IOptionsSourcePtr makeFileSource(std::filesystem::path p,
+		LogLevel min = LogLevel::Trace) noexcept;
+
+	[[nodiscard]] IOptionsSourcePtr makePromptSource(bool interactive = false,
+		LogLevel min = LogLevel::Trace) noexcept;
 
 } // namespace msg5::config
