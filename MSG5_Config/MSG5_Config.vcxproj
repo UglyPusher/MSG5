@@ -86,6 +86,7 @@
     </ClCompile>
     <ClCompile Include="src\core\Logger.cpp" />
     <ClCompile Include="src\core\MergeEngine.cpp" />
+    <ClCompile Include="src\core\ResolvedOptions.cpp" />
     <ClCompile Include="src\core\Resolver.cpp" />
     <ClCompile Include="src\core\SourceBase.cpp" />
     <ClCompile Include="src\core\Sources.cpp" />

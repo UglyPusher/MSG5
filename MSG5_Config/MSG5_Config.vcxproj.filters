@@ -134,5 +134,8 @@
     <ClCompile Include="src\core\Logger.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\ResolvedOptions.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

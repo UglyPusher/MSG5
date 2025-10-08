@@ -16,7 +16,7 @@ namespace msg5::config::cli {
         return !s.empty() && s[0] == '-';
     }
 
-    unordered_map<string, string> parse(const vector<string>& argv) {
+    unordered_map<string, string> parse_old(const vector<string>& argv) {
         unordered_map<string, string> kv;
         if (argv.empty()) return kv;
 
