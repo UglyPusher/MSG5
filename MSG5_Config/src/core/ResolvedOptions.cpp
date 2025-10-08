@@ -88,11 +88,12 @@ namespace msg5::config {
             const std::string val = has ? this->get_str(key) : std::string();
 
             // 1) required
-            if (opt.required && !has) {
-                out.push_back({ key, "required value is missing" });
-                continue; // дальше для этого ключа нечего проверять
+            if (!has) {
+                if (opt.required) {
+                    out.push_back({ key, "required value is missing" });
+                }
+                continue; // нет значения — дальше проверять нечего
             }
-            if (!has) continue; // не required и отсутствует — ок
 
             // 2) type checks
             switch (opt.type) {
