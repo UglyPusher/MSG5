@@ -44,7 +44,7 @@ namespace msg5::config {
         // - возвращает true, если ошибок нет;
         // - при false заполняет 'out' списком ошибок.
         bool validate(const struct CommandSpec& spec,
-            ValidationResult & out) const noexcept;
+            ValidationResult & out) const;
     };
 
 } // namespace msg5::config

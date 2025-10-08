@@ -2,7 +2,6 @@
 #include <unordered_set>
 #include <algorithm>
 #include <cctype>
-#include <stdexcept>
 #include <charconv>
 #include <limits>
 
@@ -13,7 +12,7 @@ namespace msg5::config {
     
     // ---------- локальные хелперы (спрятаны в TU) ----------
     namespace {
-        bool parse_bool(std::string_view v, bool def) noexcept {
+        bool parse_bool(std::string_view v, bool def) {
             std::string s(v);
             std::transform(s.begin(), s.end(), s.begin(),
                 [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
@@ -79,7 +78,7 @@ namespace msg5::config {
     // ---------------------------------------------------------------
     
     bool ResolvedOptions::validate(const CommandSpec & spec,
-        ValidationResult & out) const noexcept {
+        ValidationResult & out) const {
         out.clear();
 
         for (const auto& opt : spec.options) {
