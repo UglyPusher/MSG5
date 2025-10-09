@@ -134,4 +134,17 @@ namespace msg5::config {
         return out.empty();
     }
 
+    std::size_t ResolvedOptions::apply_defaults(const CommandSpec& spec) {
+        std::size_t applied = 0;
+        for (const auto& opt : spec.options) {
+            const auto& key = opt.key;
+            if (!has(key) && opt.default_value.has_value()) {
+                values[key] = *opt.default_value;
+                value_sources[key] = ValueSource::Default;
+                ++applied;
+            }
+        }
+        return applied;
+    }
+
 } // namespace msg5::config

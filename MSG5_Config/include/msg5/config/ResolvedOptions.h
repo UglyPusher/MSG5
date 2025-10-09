@@ -45,6 +45,10 @@ namespace msg5::config {
         // - при false заполняет 'out' списком ошибок.
         bool validate(const struct CommandSpec& spec,
             ValidationResult & out) const;
+
+        // Подставить default_value для отсутствующих ключей.
+        // Возвращает, сколько значений было подставлено.
+        std::size_t apply_defaults(const struct CommandSpec& spec);
     };
 
 } // namespace msg5::config
