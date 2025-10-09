@@ -64,3 +64,4 @@ config/*.json
 .rnd/
 *.patch
 tmp/*.*
+*.vcxproj.user
