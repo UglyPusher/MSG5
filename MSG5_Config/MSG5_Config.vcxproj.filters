@@ -84,6 +84,9 @@
     <ClInclude Include="include\msg5\config\logging\Logger.h">
       <Filter>msg5%255cconfig\logging</Filter>
     </ClInclude>
+    <ClInclude Include="include\msg5\config\util\strings.h">
+      <Filter>msg5%255cconfig</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MSG5_Config.cpp">

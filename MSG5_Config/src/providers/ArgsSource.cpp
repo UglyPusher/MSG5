@@ -3,6 +3,7 @@
 #include <algorithm> // std::replace
 #include "ArgsSource.h"
 #include "msg5/config/CommandSpec.h"
+#include "msg5/config/util/strings.h"
 
 namespace msg5::config {
     // ArgsSource.cpp
@@ -20,7 +21,7 @@ namespace msg5::config {
             const std::string& a = argv[i];
 
             // Длинные: --key[=value]
-            if (a.rfind("--", 0) == 0) {
+            if (msg5::config::str::starts_with(a, "--")) {
                 std::string body = a.substr(2);
                 const auto eq = body.find('=');
                 if (eq != std::string::npos) {
@@ -61,10 +62,10 @@ namespace msg5::config {
         : SourceBase(ProviderClass::Cli, "cli")
     {
         set_min_level(min); 
-        argv_.reserve(argc > 0 ? argc - 1 : 0);
-        //argv_.reserve(argc);
+        // мы передаём во внутренний парсер весь argv, включая argv[0];
+        // reserve под реальный размер, без -1
+        argv_.reserve(argc > 0 ? argc : 0);
         for (int i = 0; i < argc; ++i) {
-            //if (i == 0) continue; // пропускаем имя процесса
             argv_.emplace_back(argv[i] ? std::string(argv[i]) : std::string{});
         }
     }

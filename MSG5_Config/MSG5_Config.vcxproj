@@ -69,6 +69,7 @@
     <ClInclude Include="include\msg5\config\Sources.h" />
     <ClInclude Include="include\msg5\config\source\IOptionsSource.h" />
     <ClInclude Include="include\msg5\config\source\SourceBase.h" />
+    <ClInclude Include="include\msg5\config\util\strings.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="src\providers\ArgsSource.h" />
     <ClInclude Include="src\providers\EnvSource.h" />
