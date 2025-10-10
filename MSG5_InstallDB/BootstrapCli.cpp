@@ -1,752 +1,623 @@
-﻿#include "BootstrapCli.h"
+﻿#include <optional>
+#include <filesystem>
+#include <cstdlib>
+#include <string_view>
+#include <fstream>
 
+
+#include "BootstrapCli.h"
+
+// DB helpers
 #include "PgExecutor.h"
 #include "DbProbe.h"
-#include "Utils/SqlUtil.h"
-#include "Utils/Env.h"
-#include "Utils/Json.h"
-#include "Utils/FS.h"
-#include "Config/ConfigLoader.h"
-#include "bootstrap/Prompts.h"
+#include "Utils/SqlUtil.h"            // quote_ident / quote_lit
+#include "bootstrap/Prompts.h"  // confirm_yes / prompt_secret
+#include "Utils/FS.h"                 // list_files_with_extension
 #include "bootstrap/UsageText.h"
 
-
-#include <nlohmann/json.hpp>
-
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <cstdio>
-
-#include <sstream>
-#include <string>
-#include <vector>
-#include <cctype>
-#include <algorithm>
-
-#include <stdexcept>
-
-// -----------------------------------------------------------------------------
-// P0.2 — Safe SQL quoting helpers
-//  - sql_quote_ident(s): quotes PostgreSQL identifiers safely.
-//  - sql_quote_lit(s):   quotes PostgreSQL string literals safely.
-//
-// Notes:
-//  * Identifiers are double-quoted; inner `"` are doubled.
-//  * Literals are single-quoted; inner `'` are doubled; backslashes are not special.
-//  * Use for: database names, schema/table/role names, and any dynamic identifier.
-//  * DO NOT use ident quoting for connection strings (DSN) — only for SQL text.
-// -----------------------------------------------------------------------------
-// moved to header
-
-
-// moved to header
-using msg5::sql::quote_lit;
-using msg5::sql::quote_ident;
-
-
-// Convenience builder for CREATE DATABASE. You may use it to avoid manual string concatenation.
-// Optional args: owner, template, encoding — pass empty string to skip.
-static std::string build_create_database_sql(const std::string & dbname,
-    const std::string & owner,
-    const std::string & templ,
-    const std::string & encoding) {
-    if (dbname.empty()) throw std::invalid_argument("CREATE DATABASE: dbname is required");
-    std::string sql = "CREATE DATABASE " + quote_ident(dbname);
-    if (!owner.empty())    sql += " OWNER " + quote_ident(owner);
-    if (!templ.empty())    sql += " TEMPLATE " + quote_ident(templ);
-    if (!encoding.empty()) sql += " ENCODING " + quote_lit(encoding);
-    sql += ";";
-    return sql;
-}
-
-#ifdef _WIN32
-#include <conio.h>
-#else
-#include <termios.h>
-#include <unistd.h>
-#endif
-
-using nlohmann::json;
-namespace fs = std::filesystem;
-using bootstrap::prompt_line;
-using bootstrap::prompt_hidden;
-using bootstrap::msg5_prompt_yes_no;
-using bootstrap::print_usage;
-
-
+using namespace msg5::config;
 
 namespace {
-
-    // -------------------------- утилиты ввода/вывода --------------------------
-
-    // чтение JSON из файла, если он есть
-    json load_config_json_if_any(const fs::path& config_path, bool& has_file_out) {
-        has_file_out = false;
-        if (config_path.empty()) return json::object();
-        try {
-            msg5::ConfigLoader loader(config_path.string());
-            has_file_out = loader.isValid();
-            return loader.root();
-        }
-        catch (...) {
-            return json::object();
-        }
-    }
-
-     // -------------------------- структура входных параметров --------------------------
-
-    struct Inputs {
-            // global flags
-        bool dry_run = true;   // plan-only by default
-        bool force = false;    // execute without interactive prompt
-        bool assume_yes = false; // auto-confirm interactive prompts
-        bool continue_on_error = false; // keep going on SQL file errors
-
-        enum class TxMode { PerFile, Single, None };
-        TxMode tx_mode = TxMode::PerFile; // default: atomic per file
-        
-            // validate
-        std::string dsn;
-        bool ask_pass = false;
-
-        // create-database
-        std::string bootstrap_dsn;
-        std::string host, port;
-        std::string dbname, owner, owner_pass;
-        std::string encoding = "UTF8", templ = "template1";
-        bool ask_owner_pass = false;
-
-        // apply-meta-structure
-        std::string app_dsn;
-        fs::path baseline_dir;
-
-        // infra
-        bool stdin_json = false;
-        fs::path config_path;
-    };
-    
-    // -----------------------------------------------------------------------------
-    // P0.1b legacy bridge for `confirm` (to be removed once all call-sites updated)
-    // - We keep a global `confirm` symbol to avoid breaking legacy `if (confirm == "...")` checks.
-    // - New behavior is governed by flags: --dry-run / --force / --yes.
-    // - Use helpers below in new code paths instead of touching `confirm` directly.
-    // -----------------------------------------------------------------------------
-    static std::string confirm; // DEPRECATED: do not use in new code
-
-    // Simple prompt function for interactive confirmation; returns true when user answers yes.
-    
-    // Use this in new code to decide whether an operation should execute.
-    // Contract:
-    //   - returns false in dry-run;
-    //   - returns true if --force or --yes is set;
-    //   - otherwise asks the user interactively.
-    static bool msg5_should_execute(const std::string& op_name, const Inputs& in) {
-        if (in.dry_run) return false;
-        if (in.force || in.assume_yes) return true;
-        return msg5_prompt_yes_no(("Proceed with " + op_name + "?").c_str());
-
-    }
-    // For legacy sites still branching on `confirm == "...")`, we expose a helper that
-    // sets `confirm = "ALL"` when execution is allowed non-interactively; otherwise clears it.
-    // This preserves old behavior until those sites are refactored to msg5_should_execute().
-    static void msg5_legacy_confirm_sync(const Inputs& in) {
-        if (in.dry_run) { confirm.clear(); return; }
-        if (in.force || in.assume_yes) { confirm = "ALL"; return; }
-        confirm.clear();
-    }
-    // -------------------------- слияние параметров из JSON --------------------------
-
-    void merge_validate(const json& j, Inputs& in) {
-        auto get = [&](const char* k, std::string& dst) {
-            if (j.contains(k) && j.at(k).is_string() && dst.empty())
-                dst = j.at(k).get<std::string>();
-            };
-        get("dsn", in.dsn);
-        // совместимость с create-database: можно переиспользовать поля
-        get("host", in.host);
-        get("port", in.port);
-        get("user", in.owner);      // не обязательно
-        get("password", in.owner_pass);
-    }
-
-    void merge_create_db(const json& j, Inputs& in) {
-        auto get = [&](const char* k, std::string& dst) {
-            if (j.contains(k) && j.at(k).is_string() && dst.empty())
-                dst = j.at(k).get<std::string>();
-            };
-        get("bootstrap_dsn", in.bootstrap_dsn);
-        get("host", in.host);
-        get("port", in.port);
-        get("dbname", in.dbname);
-        get("owner", in.owner);
-        get("owner_pass", in.owner_pass);
-        get("encoding", in.encoding);
-        get("template", in.templ);
-    }
-
-    void merge_apply_meta(const json& j, Inputs& in) {
-        auto get = [&](const char* k, std::string& dst) {
-            if (j.contains(k) && j.at(k).is_string() && dst.empty())
-                dst = j.at(k).get<std::string>();
-            };
-        get("app_dsn", in.app_dsn);
-        if (j.contains("baseline_dir") && j.at("baseline_dir").is_string() && in.baseline_dir.empty())
-            in.baseline_dir = j.at("baseline_dir").get<std::string>();
-    }
-
-    // -------------------------- помощь по create-database --------------------------
-
-    bool role_exists(PgExecutor& pg, const std::string& role) {
-        auto v = pg.scalar("select exists(select 1 from pg_roles where rolname=" + quote_lit(role) + ")");
-        return v == "t" || v == "true" || v == "1" || v == "TRUE";
-    }
-
-    bool database_exists_boot(PgExecutor& pg, const std::string& dbname) {
-        auto v = pg.scalar("select exists(select 1 from pg_database where datname=" + quote_lit(dbname) + ")");
-        return v == "t" || v == "true" || v == "1" || v == "TRUE";
-    }
-
-    // -------------------------- validate --------------------------
-
-    int cmd_validate(Inputs in) {
-        // validate must never be dry-run by default
-        in.dry_run = false;
-
-        // resolve config path: CLI > ENV > default
-        fs::path cfg = in.config_path;
-        if (cfg.empty()) {
-            try {
-                cfg = msg5::ConfigLoader::ResolvePath(0, nullptr,
-                    "MSG5_BOOTSTRAP_CONFIG",
-                    fs::path("..") / ".." / "config" / "bootstrap.json");
-            } catch (...) {
-                // no config is okay; proceed with empty JSON
-            }
-        }
-
-        bool has_file = false;
-        json jfile = load_config_json_if_any(cfg, has_file);
-        json jstdin = msg5::utils::load_stdin_json_if_any(in.stdin_json);
-
-        merge_validate(jfile, in);
-        merge_validate(jstdin, in);
-        // Precedence: CLI > STDIN-JSON > CONFIG > Console
-        // Apply STDIN values only if the current field is empty or equals the value from CONFIG file
-        {
-            auto _ovr = [&](const char* k, std::string& dst){
-                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
-                    std::string v = jstdin.at(k).get<std::string>();
-                    bool came_from_cfg = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
-                    if (dst.empty() || came_from_cfg) dst = v; // do not override CLI
-                }
-            };
-            _ovr("dsn", in.dsn);
-            _ovr("host", in.host);
-            _ovr("port", in.port);
-            _ovr("user", in.owner);
-            _ovr("password", in.owner_pass);
-        }
-
-        // STDIN should override values coming from config (but not CLI)
-        {
-            auto _ovr = [&](const char* k, std::string& dst){
-                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
-                    std::string v = jstdin.at(k).get<std::string>();
-                    bool from_file = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
-                    if (dst.empty() || from_file) dst = v;
-                }
-            };
-            _ovr("dsn", in.dsn);
-            _ovr("host", in.host);
-            _ovr("port", in.port);
-            _ovr("user", in.owner);
-            _ovr("password", in.owner_pass);
-        }
-
-        // Dry-run: skip prompts and real connections
-        if (in.dry_run) {
-            if (in.dsn.empty()) {
-                std::cout << "[plan] validate: would prompt for host/port/dbname/user (dry-run)\n";
-                return 0;
-            } else {
-                std::cout << "[plan] validate: would check connection (dry-run)\n";
-                return 0;
-            }
-        }
-
-        if (in.dsn.empty()) {
-            // попробуем собрать dsn интерактивно (минимум: host/port/dbname/user/password)
-            std::cout << "[validate] DSN is empty - enter parts\n";
-            in.host = in.host.empty() ? prompt_line("  host", "127.0.0.1") : in.host;
-            in.port = in.port.empty() ? prompt_line("  port", "5432") : in.port;
-            std::string db = prompt_line("  dbname", "postgres");
-            std::string user = prompt_line("  user", "postgres");
-            std::string pass = in.ask_pass ? prompt_hidden("  password") : std::string{};
-            std::ostringstream os;
-            os << "host=" << in.host << " port=" << in.port
-                << " dbname=" << db << " user=" << user;
-            if (!pass.empty()) os << " password=" << pass;
-            in.dsn = os.str();
-        }
-
-        try {   
-            PgExecutor pg{ in.dsn.c_str() };
-            auto ver = pg.scalar("select version()");
-            auto ip = pg.scalar("select inet_server_addr()");
-            auto pport = pg.scalar("select current_setting('port')");
-            auto usr = pg.scalar("select current_user");
-            std::cout << "[validate] ok\n"
-                << "  version: " << ver << "\n"
-                << "  server:  " << ip << ":" << pport << "\n"
-                << "  user:    " << usr << "\n";
-
-            // ----- minimal technical validation (schemas + owners) -----
-            int fails = 0;
-            auto ok   = [&](const std::string& what){ std::cout << "[ok]    " << what << "\n"; };
-            auto fail = [&](const std::string& what){ std::cout << "[fail]  " << what << "\n"; ++fails; };
-
-            auto check_schema_with_owner = [&](const char* sname){
-                try {
-                    auto present = pg.scalar(
-                        "select count(*) from information_schema.schemata where schema_name = '" +
-                        std::string(sname) + "'"
-                    );
-                    if (present == "1") {
-                        ok(std::string("schema '") + sname + "' present");
-                        try {
-                            auto owner = pg.scalar(
-                                "select nspowner::regrole::text from pg_namespace where nspname = '" +
-                                std::string(sname) + "'"
-                            );
-                            ok(std::string("schema '") + sname + "' owner: " + owner);
-                        } catch (...) { fail(std::string("schema '") + sname + "' owner lookup failed"); }
-                    } else {
-                        fail(std::string("schema '") + sname + "' missing");
-                    }
-                } catch (...) {
-                    fail(std::string("schema '") + sname + "' check error");
-                }
-            };
-
-            check_schema_with_owner("meta");
-            check_schema_with_owner("sys");
-
-            if (fails == 0)
-                std::cout << "[validate] summary: OK\n";
-            else
-                std::cout << "[validate] summary: FAIL (" << fails << " issue(s))\n";
-
-return 0;
-        }
-        catch (const std::exception& e) {
-            std::cerr << "[validate] ERROR: " << e.what() << "\n";
-            return 7;
-        }
-    }
-
-    // -------------------------- create-database --------------------------
-
-    int cmd_create_database(Inputs in) {
-        // resolve config path: CLI > ENV > default
-        fs::path cfg = in.config_path;
-        if (cfg.empty()) {
-            try {
-                cfg = msg5::ConfigLoader::ResolvePath(0, nullptr,
-                    "MSG5_BOOTSTRAP_CONFIG",
-                    fs::path("..") / ".." / "config" / "bootstrap.json");
-            } catch (...) {
-                // no config is okay; proceed with empty JSON
-            }
-        }
-
-        bool has_file = false;
-        json jfile = load_config_json_if_any(cfg, has_file);
-        json jstdin = msg5::utils::load_stdin_json_if_any(in.stdin_json);
-
-        merge_create_db(jfile, in);
-        merge_create_db(jstdin, in);
-        // Precedence: CLI > STDIN-JSON > CONFIG > Console
-        // Apply STDIN values only if the current field is empty or equals the value from CONFIG file
-        {
-            auto _ovr = [&](const char* k, std::string& dst){
-                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
-                    std::string v = jstdin.at(k).get<std::string>();
-                    bool came_from_cfg = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
-                    if (dst.empty() || came_from_cfg) dst = v; // do not override CLI
-                }
-            };
-            _ovr("bootstrap_dsn", in.bootstrap_dsn);
-            _ovr("host", in.host);
-            _ovr("port", in.port);
-            _ovr("dbname", in.dbname);
-            _ovr("owner", in.owner);
-            _ovr("owner_pass", in.owner_pass);
-            _ovr("encoding", in.encoding);
-            _ovr("template", in.templ);
-        }
-
-        // STDIN should override values coming from config (but not CLI)
-        {
-            auto _ovr = [&](const char* k, std::string& dst){
-                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
-                    std::string v = jstdin.at(k).get<std::string>();
-                    bool from_file = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
-                    if (dst.empty() || from_file) dst = v;
-                }
-            };
-            _ovr("bootstrap_dsn", in.bootstrap_dsn);
-            _ovr("host", in.host);
-            _ovr("port", in.port);
-            _ovr("dbname", in.dbname);
-            _ovr("owner", in.owner);
-            _ovr("owner_pass", in.owner_pass);
-            _ovr("encoding", in.encoding);
-            _ovr("template", in.templ);
-        }
-
-        // простая интерактивная докомплектация
-        if (in.bootstrap_dsn.empty()) {
-            std::cout << "[create] Enter bootstrap DSN (admin):\n";
-            in.bootstrap_dsn = prompt_line("  bootstrap_dsn");
-        }
-        if (in.dbname.empty()) in.dbname = prompt_line("  dbname", "MSG5");
-        if (in.owner.empty())  in.owner = prompt_line("  owner", "msg5_app_owner");
-        if (in.ask_owner_pass && in.owner_pass.empty())
-            in.owner_pass = prompt_hidden("  owner password");
-        if (in.encoding.empty()) in.encoding = "UTF8";
-        if (in.templ.empty())    in.templ = "template1";
-
-        if (in.bootstrap_dsn.empty() || in.dbname.empty() || in.owner.empty()) {
-            std::cerr << "ERROR: bootstrap_dsn/dbname/owner not specified\n";
-            return 2;
-        }
-
-        bool dry_run = in.dry_run;
-
-        // Unified execution decision: dry-run blocks, --force/--yes allow, otherwise ask.
-        if (!msg5_should_execute("CREATE-DATABASE", in)) {
-            std::cout << "DRY-RUN or not confirmed. Use --force or --yes.\n";
-            return 1;
-        }
-        msg5_legacy_confirm_sync(in);
-
-        try {
-            PgExecutor boot{ in.bootstrap_dsn.c_str() };
-
-            // ensure role
-            if (!role_exists(boot, in.owner)) {
-                std::ostringstream sql;
-                sql << "CREATE ROLE " << quote_ident(in.owner) << " LOGIN";
-                if (!in.owner_pass.empty())
-                    sql << " PASSWORD " << quote_lit(in.owner_pass);
-                std::cout << (dry_run ? "[plan] " : "[do]  ")
-                    << "create role " << in.owner << "\n";
-                if (!dry_run) boot.exec(sql.str());
-            }
-            else {
-                std::cout << "[plan] role " << in.owner << " already exists - skip\n";
-            }
-
-            // ensure database
-            if (!database_exists_boot(boot, in.dbname)) {
-                const std::string sql = build_create_database_sql(
-                    in.dbname,
-                    in.owner,
-                    in.templ,
-                    in.encoding
-                    );
-                std::cout << (dry_run ? "[plan] " : "[do]  ")
-                    << "create database " << in.dbname
-                    << " owner " << in.owner
-                    << " encoding " << in.encoding
-                    << " template " << in.templ << "\n";
-                if (!dry_run) boot.exec(sql);
-            }
-            else {
-                std::cout << "[plan] database " << in.dbname << " already exists - skip\n";
-            }
-
-            if (dry_run) {
-                std::cout << "\nDRY-RUN complete. To execute, add: --force (or --yes).\n";
-            }
-            else {
-                std::cout << "\nCREATE-DB done.\n";
-            }
-            return 0;
-        }
-        catch (const std::exception& e) {
-            std::cerr << "ERROR: " << e.what() << "\n";
-            return 7;
-        }
-    }
-
-    // -------------------------- apply-meta-structure --------------------------
-
-
-    int cmd_apply_meta(Inputs in) {
-        // resolve config path: CLI > ENV > default
-        fs::path cfg = in.config_path;
-        if (cfg.empty()) {
-            try {
-                cfg = msg5::ConfigLoader::ResolvePath(0, nullptr,
-                    "MSG5_BOOTSTRAP_CONFIG",
-                    fs::path("..") / ".." / "config" / "bootstrap.json");
-            } catch (...) {
-                // no config is okay; proceed with empty JSON
-            }
-        }
-
-        bool has_file = false;
-        json jfile = load_config_json_if_any(cfg, has_file);
-        json jstdin = msg5::utils::load_stdin_json_if_any(in.stdin_json);
-
-        merge_apply_meta(jfile, in);
-        merge_apply_meta(jstdin, in);
-        // Precedence: CLI > STDIN-JSON > CONFIG > Console
-        // Apply STDIN values only if the current field is empty or equals the value from CONFIG file
-        {
-            auto _ovr = [&](const char* k, std::string& dst){
-                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
-                    std::string v = jstdin.at(k).get<std::string>();
-                    bool came_from_cfg = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
-                    if (dst.empty() || came_from_cfg) dst = v; // do not override CLI
-                }
-            };
-            _ovr("app_dsn", in.app_dsn);
-            if (jstdin.contains("baseline_dir") && jstdin.at("baseline_dir").is_string()) {
-                std::string v = jstdin.at("baseline_dir").get<std::string>();
-                bool came_from_cfg = (jfile.contains("baseline_dir") && jfile.at("baseline_dir").is_string() && in.baseline_dir == jfile.at("baseline_dir").get<std::string>());
-                if (in.baseline_dir.empty() || came_from_cfg) in.baseline_dir = v; // do not override CLI
-            }
-        }
-
-        // STDIN should override values coming from config (but not CLI)
-        {
-            auto _ovr = [&](const char* k, std::string& dst){
-                if (jstdin.contains(k) && jstdin.at(k).is_string()) {
-                    std::string v = jstdin.at(k).get<std::string>();
-                    bool from_file = (jfile.contains(k) && jfile.at(k).is_string() && dst == jfile.at(k).get<std::string>());
-                    if (dst.empty() || from_file) dst = v;
-                }
-            };
-            _ovr("app_dsn", in.app_dsn);
-            if (jstdin.contains("baseline_dir") && jstdin.at("baseline_dir").is_string()) {
-                std::string v = jstdin.at("baseline_dir").get<std::string>();
-                bool from_file = (jfile.contains("baseline_dir") && jfile.at("baseline_dir").is_string() && in.baseline_dir == jfile.at("baseline_dir").get<std::string>());
-                if (in.baseline_dir.empty() || from_file) in.baseline_dir = v;
-            }
-        }
-
-        // интерактивно доберём недостающее
-        if (in.app_dsn.empty()) {
-            std::cout << "[apply] Enter app DSN (user that can create meta objects):\n";
-            in.app_dsn = prompt_line("  app_dsn");
-        }
-        if (in.baseline_dir.empty()){
-            // Use a portable default like ./db/meta/structure
-            const std::string def_base = (fs::path(".") / "db" / "meta" / "structure").string();
-            in.baseline_dir = prompt_line("  baseline_dir", def_base);
-        }
-
-        if (in.app_dsn.empty() || in.baseline_dir.empty()) {
-            std::cerr << "ERROR: app_dsn/baseline_dir not specified\n";
-            return 2;
-        }
-
-        auto files = msg5::utils::list_files_with_extension(in.baseline_dir, ".sql");
-        if (files.empty()) {
-            std::cerr << "ERROR: no *.sql files found in " << in.baseline_dir.string() << "\n";
-            return 2;
-        }
-
-        bool dry_run = in.dry_run;
-
-        // Unified execution decision: dry-run blocks, --force/--yes allow, otherwise ask.
-        if (!msg5_should_execute("APPLY-META", in)) {
-            std::cout << "DRY-RUN or not confirmed. Use --force or --yes.\n";
-            return 1;
-        }
-        msg5_legacy_confirm_sync(in);
-
-        try {
-            PgExecutor app{ in.app_dsn.c_str() };
-
-            // идемпотентность: если мета уже есть — ничего не делаем
-            if (msg5::dbprobe::meta_schema_present(app)) {
-                std::cout << "[apply] meta.meta_schema already present — nothing to do\n";
-                return 0;
-            }
-
-            std::cout << (dry_run ? "[plan] " : "[do]  ")
-                << "Applying baseline from: " << in.baseline_dir.string() << "\n";
-
-            auto tx_mode_str = std::string{};
-            switch (in.tx_mode) {
-            case Inputs::TxMode::PerFile: tx_mode_str = "per-file"; break;
-            case Inputs::TxMode::Single:  tx_mode_str = "single";   break;
-            case Inputs::TxMode::None:    tx_mode_str = "none";     break;
-            }
-
-            std::cout << (dry_run ? "[plan] " : "[do]  ")
-                << "Tx mode: " << tx_mode_str
-                << (in.continue_on_error ? " (continue-on-error)" : "") << "\n";
-
-            // If user asks for --tx-mode=single with --continue-on-error, warn and degrade to per-file.
-            
-            if (in.tx_mode == Inputs::TxMode::Single && in.continue_on_error) {
-                std::cout << "[warn] --tx-mode=single conflicts with --continue-on-error; "
-                    "falling back to per-file\n";
-                in.tx_mode = Inputs::TxMode::PerFile;
-            }
-
-            if (in.tx_mode == Inputs::TxMode::Single) {
-                // One big transaction
-                if (!dry_run) app.exec("BEGIN");
-                std::size_t idx = 0;
-                try {
-                    for (auto& f : files) {
-                        ++idx;
-                        const auto fname = f.filename().string();
-                        std::cout << (dry_run ? "[plan] " : "[do]  ")
-                            << "[" << idx << "/" << files.size() << "] run " << fname << "\n";
-                        if (dry_run) continue;
-                        std::ifstream is(f, std::ios::binary);
-                        if (!is) throw std::runtime_error("cannot open " + f.string());
-                        std::string sql((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
-                        if (!sql.empty()) app.exec(sql);
-                    }
-                    if (!dry_run) app.exec("COMMIT");
-                }
-                catch (...) {
-                    if (!dry_run) {
-                        try { app.exec("ROLLBACK"); }
-                        catch (...) {}
-                    }
-                    throw;
-                }
-            }
-            else {
-                // Per file or None
-                std::size_t idx = 0;
-                for (auto& f : files) {
-                    ++idx;
-                    const auto fname = f.filename().string();
-                    std::cout << (dry_run ? "[plan] " : "[do]  ")
-                        << "[" << idx << "/" << files.size() << "] run " << fname << "\n";
-                    if (dry_run) continue;
-
-                    std::ifstream is(f, std::ios::binary);
-                    if (!is) {
-                        std::string msg = "cannot open " + f.string();
-                        if (in.continue_on_error) {
-                            std::cerr << "[error] " << msg << " - skipping due to --continue-on-error\n";
-                            continue;
-                        }
-                        throw std::runtime_error(msg);
-                    }
-                    
-                    std::string sql((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
-                    try {
-                        if (in.tx_mode == Inputs::TxMode::PerFile && !sql.empty()) app.exec("BEGIN");
-                        if (!sql.empty()) app.exec(sql);
-                        if (in.tx_mode == Inputs::TxMode::PerFile && !sql.empty()) app.exec("COMMIT");
-                    }
-                    catch (const std::exception& e) {
-                        if (in.tx_mode == Inputs::TxMode::PerFile) {
-                            try { app.exec("ROLLBACK"); }
-                            catch (...) {}
-                        }
-                        const auto sz = sql.size();
-                        const std::string preview = sql.substr(0, std::min<std::size_t>(sz, 200));
-                        std::cerr << "[error] SQL failed in file: " << fname << " (bytes=" << sz << ")\n"
-                            << "        message: " << e.what() << "\n"
-                            << "        preview: " << preview << (sz > preview.size() ? "..." : "") << "\n";
-                        if (in.continue_on_error) {
-                            std::cerr << "        skipping due to --continue-on-error\n";
-                            continue;
-                        }
-                        throw;
-                    }
-                }
-            }
-
-            if (dry_run)
-                std::cout << "\nDRY-RUN complete. To execute, add: --force\n";
-            else
-                std::cout << "\nAPPLY-META done.\n";
-
-            return 0;
-        }
-        catch (const std::exception& e) {
-            std::cerr << "ERROR: " << e.what() << "\n";
-            return 7;
-        }
-    }
-
-} // namespace
-
-// -------------------------- вход в CLI --------------------------
-
-int RunBootstrapCli(int argc, char** argv) {
-    if (argc < 2) { print_usage(); return 2; }
-    std::string cmd = argv[1];
-
-    Inputs in;
-    // простой парсер аргументов (без сторонних библиотек)
-    for (int i = 2; i < argc; ++i) {
-        std::string a = argv[i];
-
-        // общие
-        if (a == "--stdin-json") { in.stdin_json = true; continue; }
-        if (a == "--config" && i + 1 < argc) { in.config_path = argv[++i]; continue; }
-        if (a == "--dry-run") { in.dry_run = true; continue; }
-        if (a == "--force") { in.dry_run = false; in.force = true; continue; }
-        if (a == "--yes" || a == "-y" || a == "--assume-yes") { in.assume_yes = true; continue; }
-        if (a == "--continue-on-error") { in.continue_on_error = true; continue; }
-        if (a == "--tx-mode" && i + 1 < argc) {
-            std::string v = argv[++i];
-            for (auto& c : v) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-            if (v == "per-file" || v == "perfile" || v == "file") in.tx_mode = Inputs::TxMode::PerFile;
-            else if (v == "single" || v == "all") in.tx_mode = Inputs::TxMode::Single;
-            else if (v == "none" || v == "off") in.tx_mode = Inputs::TxMode::None;
-            else { std::cerr << "Unknown --tx-mode value: " << v << "\n"; return 2; }
-            continue;
-        }
-
-
-
-        // validate
-        if (a == "--dsn" && i + 1 < argc) { in.dsn = argv[++i]; continue; }
-        if (a == "--ask-pass") { in.ask_pass = true; continue; }
-
-        // create-database
-        if (a == "--bootstrap-dsn" && i + 1 < argc) { in.bootstrap_dsn = argv[++i]; continue; }
-        if (a == "--host" && i + 1 < argc) { in.host = argv[++i]; continue; }
-        if (a == "--port" && i + 1 < argc) { in.port = argv[++i]; continue; }
-        if (a == "--dbname" && i + 1 < argc) { in.dbname = argv[++i]; continue; }
-        if (a == "--owner" && i + 1 < argc) { in.owner = argv[++i]; continue; }
-        if (a == "--owner-pass" && i + 1 < argc) { in.owner_pass = argv[++i]; continue; }
-        if (a == "--ask-owner-pass") { in.ask_owner_pass = true; continue; }
-        if (a == "--encoding" && i + 1 < argc) { in.encoding = argv[++i]; continue; }
-        if (a == "--template" && i + 1 < argc) { in.templ = argv[++i]; continue; }
-
-        // apply-meta-structure
-        if (a == "--app-dsn" && i + 1 < argc) { in.app_dsn = argv[++i]; continue; }
-        if (a == "--baseline-dir" && i + 1 < argc) { in.baseline_dir = argv[++i]; continue; }
-
-        // help
-        if (a == "-h" || a == "--help" || a == "/?") { print_usage(); return 0; }
-
-        std::cerr << "Unknown arg: " << a << "\n";
-        return 2;
-    }
-
-    if (cmd == "validate")               return cmd_validate(in);
-    if (cmd == "create-database")        return cmd_create_database(in);
-    if (cmd == "apply-meta-structure")   return cmd_apply_meta(in);
-
-    std::cerr << "Unknown command: " << cmd << "\n";
-    print_usage();
-    return 2;
+	std::vector<std::string> TxEnums() { return { "per-file","single","none" }; }
+	
+	// Safe getenv: MSVC -> _dupenv_s, иначе стандартный getenv
+	static std::optional<std::string> GetEnv(std::string_view name) {
+#if defined(_MSC_VER)
+		char* buf = nullptr;
+		size_t len = 0;
+		if (_dupenv_s(&buf, &len, std::string(name).c_str()) != 0 || !buf) return std::nullopt;
+		std::string v(buf, len ? len - 1 : 0); // len включает нуль-терминатор
+		free(buf);
+		if (v.empty()) return std::nullopt;
+		return v;
+#else
+		if (const char* p = std::getenv(std::string(name).c_str())) {
+			if (*p) return std::string(p);
+		}
+		return std::nullopt;
+#endif
+	}
+
+	// --config PATH или ENV MSG5_BOOTSTRAP_CONFIG
+	std::optional<std::filesystem::path> FindConfigPath(int argc, const char* const* argv) {
+		for (int i = 1; i + 1 < argc; ++i) {
+			if (std::string_view(argv[i]) == "--config") {
+				return std::filesystem::path(argv[i + 1]);
+			}
+		}
+		if (auto env = GetEnv("MSG5_BOOTSTRAP_CONFIG"); env && !env->empty())
+			return std::filesystem::path(*env);
+		return std::nullopt;
+	}
+	
+	
+	// Источники по приоритету: CLI > FILE(cfg) > ENV(MSG5_*) > PROMPT
+	std::vector<IOptionsSourcePtr> MakeDefaultSources(int argc, const char* const* argv,
+		std::optional<std::filesystem::path> cfg) {
+		std::vector<IOptionsSourcePtr> s;
+		s.push_back(makeArgsSource(argc, argv, LogLevel::Info));
+		if (cfg) s.push_back(makeFileSource(*cfg, LogLevel::Info));
+		s.push_back(makeEnvSource("MSG5_", LogLevel::Info));
+		s.push_back(makePromptSource(true, LogLevel::Info));
+		return s;
+	}
+}
+
+namespace bootstrap {
+	
+	CommandSpec MakeSpec_Validate() {
+		CommandSpec cs{};
+		cs.name = "validate";
+		cs.options = {
+			{ K_DSN, OptionType::String, false, OptionFlags::OptNone,
+			{"--dsn"}, {"MSG5_BOOTSTRAP_DSN"}, "dsn", "DSN: ", {}, std::nullopt },
+			{ K_CONFIG_PATH, OptionType::Path, false, OptionFlags::OptNone,
+			{"--config"}, {"MSG5_BOOTSTRAP_CONFIG"}, "config", "Config path: ", {}, std::nullopt },
+			{ K_ASK_PASS, OptionType::Bool, false, OptionFlags::OptNone,
+			{"--ask-pass"}, {}, "ask_pass", "", {}, std::nullopt },
+		};
+		return cs;
+	}
+	
+	CommandSpec MakeSpec_CreateDatabase() {
+		CommandSpec cs{};
+		cs.name = "create-database";
+		cs.options = {
+			{ K_BOOTSTRAP_DSN, OptionType::String, false, OptionFlags::OptNone, 
+			{"--bootstrap-dsn"}, {"MSG5_BOOTSTRAP_DSN"}, "bootstrap_dsn", "Bootstrap DSN: ", {}, std::nullopt },
+			{ K_CONFIG_PATH, OptionType::Path, false, OptionFlags::OptNone, 
+			{"--config"}, {"MSG5_BOOTSTRAP_CONFIG"}, "config", "Config path: ", {}, std::nullopt },
+		
+			{ K_DBNAME, OptionType::String, false, OptionFlags::OptNone, 
+			{"--dbname"}, {}, "dbname", "DB name: ", {}, std::string("MSG5") },
+			{ K_OWNER,  OptionType::String, false, OptionFlags::OptNone, 
+			{"--owner"}, {}, "owner", "Owner role: ", {}, std::string("msg5_app_owner") },
+			{ K_OWNER_PASS, OptionType::String, false, OptionFlags::OptSecret,
+			{"--owner-pass"}, {}, "owner_pass", "Owner password: ", {}, std::nullopt },
+			{ K_ASK_OWNER_PASS, OptionType::Bool, false, OptionFlags::OptNone,
+			{"--ask-owner-pass"}, {}, "ask_owner_pass", "", {}, std::nullopt },
+			{ K_ENCODING, OptionType::String, false, OptionFlags::OptNone,
+			{"--encoding"}, {}, "encoding", "Encoding: ", {}, std::string("UTF8") },
+			{ K_TEMPLATE, OptionType::String, false, OptionFlags::OptNone,
+			{"--template"}, {}, "template", "Template DB: ", {}, std::string("template1") },
+		
+			{ K_DRY_RUN, OptionType::Bool, false, OptionFlags::OptNone,
+			{"--dry-run"}, {}, "dry_run", "", {}, std::nullopt },
+			{ K_FORCE,   OptionType::Bool, false, OptionFlags::OptNone,
+			{"--force"}, {}, "force", "", {}, std::nullopt },
+			{ K_YES,     OptionType::Bool, false, OptionFlags::OptNone,
+			{"--yes"}, {}, "yes", "", {}, std::nullopt },
+		};
+		return cs;
+	}
+	
+	CommandSpec MakeSpec_ApplyMetaStructure() {
+		CommandSpec cs{};
+		cs.name = "apply-meta-structure";
+		cs.options = {
+		{ K_APP_DSN, OptionType::String, false, OptionFlags::OptNone,
+		{"--app-dsn"}, {"MSG5_APP_DSN"}, "app_dsn", "App DSN: ", {}, std::nullopt },
+		{ K_BASELINE_DIR, OptionType::Path, true, OptionFlags::OptNone,
+		{"--baseline-dir"}, {}, "baseline_dir", "Baseline dir: ", {}, std::nullopt },
+		{ K_CONFIG_PATH, OptionType::Path, false, OptionFlags::OptNone,
+		{"--config"}, {"MSG5_BOOTSTRAP_CONFIG"}, "config", "Config path: ", {}, std::nullopt },
+		
+		{ K_TX_MODE, OptionType::Enum, false, OptionFlags::OptNone,
+		{"--tx-mode"}, {}, "tx_mode", "", TxEnums(), std::string("per-file") },
+		{ K_CONT_ON_ERR, OptionType::Bool, false, OptionFlags::OptNone,
+		{"--continue-on-error"}, {}, "continue_on_error", "", {}, std::nullopt },
+		
+		{ K_DRY_RUN, OptionType::Bool, false, OptionFlags::OptNone,
+		{"--dry-run"}, {}, "dry_run", "", {}, std::nullopt },
+		{ K_FORCE,   OptionType::Bool, false, OptionFlags::OptNone,
+		{"--force"}, {}, "force", "", {}, std::nullopt },
+		{ K_YES,     OptionType::Bool, false, OptionFlags::OptNone,
+		{"--yes"}, {}, "yes", "", {}, std::nullopt },
+		};
+		return cs;
+	}
+
+	CommandSpec MakeSpec_ApplyMetaData() {
+		CommandSpec cs{};
+		cs.name = "apply-meta-data";
+		cs.options = {
+		{ K_APP_DSN,   OptionType::String, false, OptionFlags::OptNone,
+		{"--app-dsn"}, {"MSG5_APP_DSN"}, "app_dsn", "App DSN: ", {}, std::nullopt },
+		{ K_DATA_DIR,  OptionType::Path,   true,  OptionFlags::OptNone,
+		{"--data-dir"}, {}, "data_dir", "Data dir: ", {}, std::nullopt },
+		{ K_CONFIG_PATH, OptionType::Path, false, OptionFlags::OptNone,
+		{"--config"}, {"MSG5_BOOTSTRAP_CONFIG"}, "config", "Config path: ", {}, std::nullopt },
+		
+		{ K_TX_MODE, OptionType::Enum, false, OptionFlags::OptNone,
+		{"--tx-mode"}, {}, "tx_mode", "", TxEnums(), std::string("per-file") },
+		{ K_CONT_ON_ERR, OptionType::Bool, false, OptionFlags::OptNone,
+		{"--continue-on-error"}, {}, "continue_on_error", "", {}, std::nullopt },
+		
+		{ K_DRY_RUN, OptionType::Bool, false, OptionFlags::OptNone,
+		{"--dry-run"}, {}, "dry_run", "", {}, std::nullopt },
+		{ K_FORCE,   OptionType::Bool, false, OptionFlags::OptNone,
+		{"--force"}, {}, "force", "", {}, std::nullopt },
+		{ K_YES,     OptionType::Bool, false, OptionFlags::OptNone,
+		{"--yes"}, {}, "yes", "", {}, std::nullopt },
+		};
+		return cs;
+	}
+	
+	ResolvedOptions ResolveFor(int argc, const char* const* argv, const CommandSpec & spec) {
+		auto cfg = FindConfigPath(argc, argv);
+		Resolver r{ MakeDefaultSources(argc, argv, cfg) };
+		r.set_min_level(LogLevel::Info);
+		ResolveParams rp;
+		rp.apply_defaults = true;
+		rp.validate = true;
+		rp.log_validation = true;
+		return r.resolve(spec, rp);
+	}
+
+} // namespace bootstrap
+
+int HandleValidate(int argc, char** argv) {
+	// 1) Разобрать опции этой команды
+	auto ro = bootstrap::ResolveFor(argc, const_cast<const char* const*>(argv),
+		bootstrap::MakeSpec_Validate());
+	const bool ask_pass = ro.values.count(bootstrap::K_ASK_PASS) &&
+		ro.values.at(bootstrap::K_ASK_PASS) == "true";
+	std::string dsn;
+	if (auto it = ro.values.find(bootstrap::K_DSN); it != ro.values.end()) {
+		dsn = it->second;
+	}
+	
+	if (dsn.empty()) {
+		std::cerr << "[validate] DSN is required. Use --dsn or set MSG5_BOOTSTRAP_DSN.\n";
+		bootstrap::print_usage();
+		return 2;
+	}
+	
+	// 2) Подключение и проверки
+	try {
+		if (ask_pass) {
+			std::cout << "[validate] --ask-pass specified (PROMPT source supported). If DSN lacks password, prompt source would be used.\n";
+		}
+		
+		PgExecutor db{ dsn };
+		std::cout << "[validate] Connected OK.\n";
+		
+		// Пустая ли БД?
+		bool is_empty = msg5::dbprobe::database_empty(db);
+		std::cout << "[validate] database_empty: " << (is_empty ? "true" : "false") << "\n";
+		
+		// Есть ли schema meta?
+		bool meta_present = msg5::dbprobe::meta_schema_present(db);
+		std::cout << "[validate] meta_schema_present: " << (meta_present ? "true" : "false") << "\n";
+		
+		// Применён ли seed (метаданные)?
+		bool seed_present = msg5::dbprobe::meta_seed_present(db);
+		std::cout << "[validate] meta_seed_present: " << (seed_present ? "true" : "false") << "\n";
+		
+		// Возвращаем 0, но пользователь видит статусы.
+		return 0;
+	}
+	
+	catch (const std::exception& ex) {
+		std::cerr << "[validate] ERROR: " << ex.what() << "\n";
+		return 1;
+	}
+}
+
+int HandleCreateDatabase(int argc, char** argv) {
+	// Разобрать опции create-database
+	auto ro = bootstrap::ResolveFor(argc,
+		const_cast<const char* const*>(argv), bootstrap::MakeSpec_CreateDatabase());
+
+	// Извлекаем параметры
+	const std::string bdsn = ro.values.count(bootstrap::K_BOOTSTRAP_DSN) ? ro.values.at(bootstrap::K_BOOTSTRAP_DSN) : "";
+	const std::string dbname = ro.values.count(bootstrap::K_DBNAME) ? ro.values.at(bootstrap::K_DBNAME) : "MSG5";
+	const std::string owner = ro.values.count(bootstrap::K_OWNER) ? ro.values.at(bootstrap::K_OWNER) : "msg5_app_owner";
+	std::string owner_pass = ro.values.count(bootstrap::K_OWNER_PASS) ? ro.values.at(bootstrap::K_OWNER_PASS) : "";
+	const std::string encoding = ro.values.count(bootstrap::K_ENCODING) ? ro.values.at(bootstrap::K_ENCODING) : "UTF8";
+	const std::string templ = ro.values.count(bootstrap::K_TEMPLATE) ? ro.values.at(bootstrap::K_TEMPLATE) : "template1";
+	const bool ask_owner = ro.values.count(bootstrap::K_ASK_OWNER_PASS) && ro.values.at(bootstrap::K_ASK_OWNER_PASS) == "true";
+	const bool dry_run = ro.values.count(bootstrap::K_DRY_RUN) && ro.values.at(bootstrap::K_DRY_RUN) == "true";
+	const bool force = ro.values.count(bootstrap::K_FORCE) && ro.values.at(bootstrap::K_FORCE) == "true";
+	const bool yes = ro.values.count(bootstrap::K_YES) && ro.values.at(bootstrap::K_YES) == "true";
+	
+	if (bdsn.empty()) {
+		std::cerr << "[create-database] --bootstrap-dsn is required (or ENV MSG5_BOOTSTRAP_DSN).\n";
+		bootstrap::print_usage();
+		return 2;
+	}
+	
+	if (ask_owner && owner_pass.empty()) {
+		owner_pass = bootstrap::prompt_hidden("Owner password: ");
+	}
+	
+	try {
+		PgExecutor sys{ bdsn }; // коннект к bootstrap БД (обычно postgres)
+		std::cout << "[create-database] Connected to server.\n";
+		
+		// 1) Проверим, существует ли уже роль и БД
+		// Роль:
+		{
+			std::string sql =
+				"select 1 from pg_roles where rolname = " + msg5::sql::quote_lit(owner) + " limit 1";
+			bool role_exists = !sys.scalar(sql).empty();
+			std::cout << "[plan] role " << owner << (role_exists ? " exists" : " will be created") << "\n";
+			
+			// 2) План и выполнение
+			if (!dry_run && !role_exists) {
+				if (!force) {
+					std::cout << "[create-database] not forced; nothing executed.\n";
+					return 0;
+				}
+				
+				if (!yes && !bootstrap::msg5_prompt_yes_no("Proceed creating role?")) {
+					std::cout << "[create-database] canceled.\n";
+					return 0;
+				}
+				
+				std::string create_role =
+					"do $$ begin "
+					"  if not exists (select 1 from pg_roles where rolname = " + msg5::sql::quote_lit(owner) + ") then "
+					"    create role " + msg5::sql::quote_ident(owner) + " login password " + msg5::sql::quote_lit(owner_pass) + "; "
+					"  end if; "
+					"end $$;";
+				sys.exec(create_role);
+				std::cout << "[ok] role ensured.\n";
+			}
+		}
+		
+		// База:
+		{
+			bool db_exists = msg5::dbprobe::database_exists(sys, dbname);
+			std::cout << "[plan] database " << dbname << (db_exists ? " exists" : " will be created") << "\n";
+			
+			if (dry_run) {
+				std::cout << "[dry-run] add --force to execute";
+				if (!yes) std::cout << " (and --yes to auto-confirm)";
+				std::cout << ".\n";
+				return 0;
+			}
+			
+			if (db_exists) {
+				std::cout << "[create-database] database already exists, nothing to do.\n";
+				return 0;
+			}
+			
+			if (!force) {
+				std::cout << "[create-database] not forced; nothing executed.\n";
+				return 0;
+			}
+			
+			if (!yes && !bootstrap::msg5_prompt_yes_no("Proceed creating database?")) {
+				std::cout << "[create-database] canceled.\n";
+				return 0;
+			}
+			
+			// CREATE DATABASE ... OWNER ... ENCODING ... TEMPLATE ...
+			std::string sql =
+				"create database " + msg5::sql::quote_ident(dbname) +
+				" owner " + msg5::sql::quote_ident(owner) +
+				" encoding " + msg5::sql::quote_lit(encoding) +
+				" template " + msg5::sql::quote_ident(templ) + ";";
+			sys.exec(sql);
+			std::cout << "[ok] database created.\n";
+		}
+		
+		return 0;
+	}
+	
+	catch (const std::exception& ex) {
+		std::cerr << "[create-database] ERROR: " << ex.what() << "\n";
+		return 1;
+	}
+}
+
+int HandleApplyMetaStructure(int argc, char** argv) {
+	// 1) Разбор опций
+	auto ro = bootstrap::ResolveFor(
+		argc, const_cast<const char* const*>(argv),
+		bootstrap::MakeSpec_ApplyMetaStructure());
+	const std::string app_dsn = ro.values.count(bootstrap::K_APP_DSN) ? ro.values.at(bootstrap::K_APP_DSN) : "";
+	const std::string base_dir = ro.values.count(bootstrap::K_BASELINE_DIR) ? ro.values.at(bootstrap::K_BASELINE_DIR) : "";
+	const std::string tx_mode = ro.values.count(bootstrap::K_TX_MODE) ? ro.values.at(bootstrap::K_TX_MODE) : "per-file";
+	const bool cont_on_err = ro.values.count(bootstrap::K_CONT_ON_ERR) && ro.values.at(bootstrap::K_CONT_ON_ERR) == "true";
+	const bool dry_run = ro.values.count(bootstrap::K_DRY_RUN) && ro.values.at(bootstrap::K_DRY_RUN) == "true";
+	const bool force = ro.values.count(bootstrap::K_FORCE) && ro.values.at(bootstrap::K_FORCE) == "true";
+	const bool yes = ro.values.count(bootstrap::K_YES) && ro.values.at(bootstrap::K_YES) == "true";
+	
+	if (app_dsn.empty()) {
+		std::cerr << "[apply-meta-structure] --app-dsn is required (or ENV MSG5_APP_DSN).\n";
+		bootstrap::print_usage();
+		return 2;
+	}
+	
+	if (base_dir.empty()) {
+		std::cerr << "[apply-meta-structure] --baseline-dir is required.\n";
+		bootstrap::print_usage();
+		return 2;
+	}
+	
+	try {
+		// 2) Скан каталога .sql (верхний уровень; без рекурсии)
+		std::vector<std::filesystem::path> files;
+		try {
+			files = msg5::utils::list_files_with_extension(std::filesystem::path(base_dir), ".sql");
+		}
+
+		catch (const std::exception& ex) {
+			std::cerr << "[apply-meta-structure] FS error: " << ex.what() << "\n";
+			return 2;
+		}
+		
+		if (files.empty()) {
+			std::cout << "[apply-meta-structure] No .sql files in: " << base_dir << "\n";
+			return 0;
+		}
+		
+		// 3) План
+		std::cout << "[plan] tx-mode = " << tx_mode
+			<< ", files = " << files.size()
+			<< (cont_on_err ? ", continue-on-error" : "") << "\n";
+		for (const auto& f : files) {
+			std::cout << "  - " << f.string() << "\n";
+		}
+		
+		if (dry_run) {
+			std::cout << "[dry-run] add --force to execute";
+			if (!yes) std::cout << " (and --yes to auto-confirm)";
+			std::cout << ".\n";
+			return 0;
+		}
+		
+		if (!force) {
+			std::cout << "[apply-meta-structure] not forced; nothing executed.\n";
+			return 0;
+		}
+		
+		if (!yes && !bootstrap::msg5_prompt_yes_no("Proceed applying meta structure?")) {
+			std::cout << "[apply-meta-structure] canceled.\n";
+			return 0;
+		}
+		
+		// 4) Выполнение
+		PgExecutor db{ app_dsn };
+		auto run_file = [&](const std::filesystem::path& p) -> bool {
+				// читаем файл целиком
+				std::ifstream in(p, std::ios::binary);
+				if (!in) {
+					std::cerr << "[apply-meta-structure] cannot open: " << p.string() << "\n";
+					return false;
+				}
+		
+				std::string sql((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+				try {
+					db.exec(sql);
+					std::cout << "[ok] " << p.filename().string() << "\n";
+					return true;
+				}
+		
+				catch (const std::exception& ex) {
+					std::cerr << "[ERR] " << p.filename().string() << ": " << ex.what() << "\n";
+					return false;
+				}
+			};
+		
+		if (tx_mode == "single") {
+			// один транзакционный блок на все файлы
+			try {
+				db.exec("begin;");
+				bool all_ok = true;
+				for (const auto& f : files) {
+					if (!run_file(f)) { all_ok = false; if (!cont_on_err) break; }
+				}
+				
+				if (!all_ok && !cont_on_err) {
+					db.exec("rollback;");
+					std::cerr << "[apply-meta-structure] aborted, rolled back.\n";
+					return 1;
+				}
+				
+				db.exec("commit;");
+			}
+
+			catch (const std::exception& ex) 
+			{
+				// если begin/commit упал – откатиться
+				try { db.exec("rollback;");
+				}
+				catch (...) {}
+				std::cerr << "[apply-meta-structure] TX error: " << ex.what() << "\n";
+				return 1;
+			}
+		}
+		else if (tx_mode == "per-file") {
+			// отдельная транзакция на каждый файл
+			bool any_err = false;
+			for (const auto& f : files) {
+			try {
+				db.exec("begin;");
+				bool ok = run_file(f);
+				if (!ok) { any_err = true; if (!cont_on_err) { db.exec("rollback;"); break; } }
+				db.exec(ok ? "commit;" : "rollback;");
+			}
+			catch (const std::exception& ex) {
+				any_err = true;
+				try { db.exec("rollback;"); }
+				catch (...) {}
+				std::cerr << "[apply-meta-structure] TX error on file " << f.filename().string()
+					<< ": " << ex.what() << "\n";
+				if (!cont_on_err) break;
+			}
+			}
+			if (any_err && !cont_on_err) return 1;
+		}
+		else { // "none"
+			bool any_err = false;
+			for (const auto& f : files) {
+				if (!run_file(f)) { any_err = true; if (!cont_on_err) break; }
+			}
+			
+			if (any_err && !cont_on_err) return 1;
+		}
+		
+		std::cout << "[apply-meta-structure] done.\n";
+		return 0;
+}
+	catch (const std::exception& ex) {
+		std::cerr << "[apply-meta-structure] ERROR: " << ex.what() << "\n";
+		return 1;
+	}
+}
+
+int HandleApplyMetaData(int argc, char** argv) {
+	// 1) Разбор опций
+	auto ro = bootstrap::ResolveFor(
+		argc, const_cast<const char* const*>(argv),
+		bootstrap::MakeSpec_ApplyMetaData());
+	const std::string app_dsn = ro.values.count(bootstrap::K_APP_DSN) ? ro.values.at(bootstrap::K_APP_DSN) : "";
+	const std::string data_dir = ro.values.count(bootstrap::K_DATA_DIR) ? ro.values.at(bootstrap::K_DATA_DIR) : "";
+	const std::string tx_mode = ro.values.count(bootstrap::K_TX_MODE) ? ro.values.at(bootstrap::K_TX_MODE) : "per-file";
+	const bool cont_on_err = ro.values.count(bootstrap::K_CONT_ON_ERR) && ro.values.at(bootstrap::K_CONT_ON_ERR) == "true";
+	const bool dry_run = ro.values.count(bootstrap::K_DRY_RUN) && ro.values.at(bootstrap::K_DRY_RUN) == "true";
+	const bool force = ro.values.count(bootstrap::K_FORCE) && ro.values.at(bootstrap::K_FORCE) == "true";
+	const bool yes = ro.values.count(bootstrap::K_YES) && ro.values.at(bootstrap::K_YES) == "true";
+	
+	if (app_dsn.empty()) {
+		std::cerr << "[apply-meta-data] --app-dsn is required (or ENV MSG5_APP_DSN).\n";
+		bootstrap::print_usage();
+		return 2;
+	}
+	
+	if (data_dir.empty()) {
+		std::cerr << "[apply-meta-data] --data-dir is required.\n";
+		bootstrap::print_usage();
+		return 2;
+	}
+	
+	try {
+		// 2) Скан каталога .sql (верхний уровень; без рекурсии)
+		std::vector<std::filesystem::path> files;
+		try {
+			files = msg5::utils::list_files_with_extension(std::filesystem::path(data_dir), ".sql");
+		}
+		catch (const std::exception& ex) {
+			std::cerr << "[apply-meta-data] FS error: " << ex.what() << "\n";
+			return 2;
+		}
+		if (files.empty()) {
+			std::cout << "[apply-meta-data] No .sql files in: " << data_dir << "\n";
+			return 0;
+		}
+		
+		// 3) План
+		std::cout << "[plan] tx-mode = " << tx_mode
+			<< ", files = " << files.size()
+			<< (cont_on_err ? ", continue-on-error" : "") << "\n";
+		for (const auto& f : files) {
+			std::cout << "  - " << f.string() << "\n";
+		}
+		
+		if (dry_run) {
+			std::cout << "[dry-run] add --force to execute";
+			if (!yes) std::cout << " (and --yes to auto-confirm)";
+			std::cout << ".\n";
+			return 0;
+		}
+		
+		if (!force) {
+			std::cout << "[apply-meta-data] not forced; nothing executed.\n";
+			return 0;
+		}
+		
+		if (!yes && !bootstrap::msg5_prompt_yes_no("Proceed applying meta data?")) {
+			std::cout << "[apply-meta-data] canceled.\n";
+			return 0;
+		}
+		
+		// 4) Выполнение
+		PgExecutor db{ app_dsn };
+		auto run_file = [&](const std::filesystem::path& p) -> bool {
+			std::ifstream in(p, std::ios::binary);
+			if (!in) { std::cerr << "[apply-meta-data] cannot open: " << p.string() << "\n"; return false; }
+			std::string sql((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+			try { db.exec(sql); std::cout << "[ok] " << p.filename().string() << "\n"; return true; }
+			catch (const std::exception& ex) {
+				std::cerr << "[ERR] " << p.filename().string() << ": " << ex.what() << "\n"; return false;
+			}
+			};
+		
+		if (tx_mode == "single") {
+			try {
+				db.exec("begin;");
+				bool all_ok = true;
+				for (const auto& f : files) {
+					if (!run_file(f)) { all_ok = false; if (!cont_on_err) break; }
+				}
+				
+				if (!all_ok && !cont_on_err) { db.exec("rollback;"); std::cerr << "[apply-meta-data] aborted, rolled back.\n"; return 1; }
+				db.exec("commit;");
+			}
+			
+			catch (const std::exception& ex) {
+				try { db.exec("rollback;"); }
+				catch (...) {}
+				std::cerr << "[apply-meta-data] TX error: " << ex.what() << "\n";
+				return 1;
+			}
+		}
+		else if (tx_mode == "per-file") {
+			bool any_err = false;
+			for (const auto& f : files) {
+				try {
+					db.exec("begin;");
+					bool ok = run_file(f);
+					db.exec(ok ? "commit;" : "rollback;");
+					if (!ok) { any_err = true; if (!cont_on_err) break; }
+				}
+				catch (const std::exception& ex) {
+					try { db.exec("rollback;"); }
+					catch (...) {}
+					any_err = true;
+					std::cerr << "[apply-meta-data] TX error on file " << f.filename().string() << ": " << ex.what() << "\n";
+					if (!cont_on_err) break;
+				}
+			}
+			
+			if (any_err && !cont_on_err) return 1;
+		}
+		else { // none
+			bool any_err = false;
+			for (const auto& f : files) {
+				if (!run_file(f)) { any_err = true; if (!cont_on_err) break; }
+			}
+			if (any_err && !cont_on_err) return 1;
+		}
+		
+		std::cout << "[apply-meta-data] done.\n";
+		return 0;
+	}
+	catch (const std::exception& ex) {
+		std::cerr << "[apply-meta-data] ERROR: " << ex.what() << "\n";
+		return 1;
+	}
 }

@@ -42,7 +42,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)third_party;$(SolutionDir)MSG5_Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)third_party;$(SolutionDir)MSG5_Core;C:\Users\днс\source\repos\MSG5\MSG5_Config\include;C:\Users\днс\source\repos\MSG5\MSG5_Config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -50,7 +50,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\dev\libpqxx\build\src\Release;D:\dev\libpqxx\lib;C:\Program Files\PostgreSQL\16\lib;C:\Program Files\OpenSSL-Win64\lib;$(SolutionDir)x64\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MSG5_Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>MSG5_Core.lib;MSG5_Config.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
