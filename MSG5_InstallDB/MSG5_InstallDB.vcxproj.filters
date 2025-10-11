@@ -13,24 +13,96 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Исходные файлы\msg5-bootstrap">
+      <UniqueIdentifier>{b616a5ac-bb57-408f-b3a7-e62491dcf931}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\msg5-bootstrap\sources">
+      <UniqueIdentifier>{3de37ec0-e382-4b64-b941-d23dc925c33b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\msg5-bootstrap\spec">
+      <UniqueIdentifier>{a440e375-d359-4d3b-85e3-5f8843682e03}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\msg5-bootstrap\commands">
+      <UniqueIdentifier>{9cc1eaaa-e54b-4df4-b9fe-854676f8945d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\msg5-bootstrap\UI">
+      <UniqueIdentifier>{69624bbc-13bc-4b11-9ade-a508f6942dc0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MSG5_Bootstrap.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="BootstrapCli.cpp">
-      <Filter>Исходные файлы</Filter>
+    <ClCompile Include="bootstrap\sources\SourcesChain.cpp">
+      <Filter>Исходные файлы\msg5-bootstrap\sources</Filter>
+    </ClCompile>
+    <ClCompile Include="bootstrap\spec\ApplyMetaDataSpec.cpp">
+      <Filter>Исходные файлы\msg5-bootstrap\spec</Filter>
+    </ClCompile>
+    <ClCompile Include="bootstrap\spec\ApplyMetaStructureSpec.cpp">
+      <Filter>Исходные файлы\msg5-bootstrap\spec</Filter>
+    </ClCompile>
+    <ClCompile Include="bootstrap\spec\CreateDbSpec.cpp">
+      <Filter>Исходные файлы\msg5-bootstrap\spec</Filter>
+    </ClCompile>
+    <ClCompile Include="bootstrap\spec\ValidateSpec.cpp">
+      <Filter>Исходные файлы\msg5-bootstrap\spec</Filter>
+    </ClCompile>
+    <ClCompile Include="bootstrap\commands\ApplyMetaData.cpp">
+      <Filter>Исходные файлы\msg5-bootstrap\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="bootstrap\commands\ApplyMetaStructure.cpp">
+      <Filter>Исходные файлы\msg5-bootstrap\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="bootstrap\commands\CreateDb.cpp">
+      <Filter>Исходные файлы\msg5-bootstrap\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="bootstrap\commands\Validate.cpp">
+      <Filter>Исходные файлы\msg5-bootstrap\commands</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BootstrapCli.h">
-      <Filter>Файлы заголовков</Filter>
+    <ClInclude Include="bootstrap\sources\CliKeys.h">
+      <Filter>Исходные файлы\msg5-bootstrap\sources</Filter>
     </ClInclude>
-    <ClInclude Include="bootstrap\Prompts.h">
-      <Filter>Файлы заголовков</Filter>
+    <ClInclude Include="bootstrap\sources\SourcesChain.h">
+      <Filter>Исходные файлы\msg5-bootstrap\sources</Filter>
     </ClInclude>
-    <ClInclude Include="bootstrap\UsageText.h">
-      <Filter>Файлы заголовков</Filter>
+    <ClInclude Include="bootstrap\spec\ApplyMetaDataSpec.h">
+      <Filter>Исходные файлы\msg5-bootstrap\spec</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\spec\ApplyMetaStructureSpec.h">
+      <Filter>Исходные файлы\msg5-bootstrap\spec</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\spec\CreateDbSpec.h">
+      <Filter>Исходные файлы\msg5-bootstrap\spec</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\spec\ValidateSpec.h">
+      <Filter>Исходные файлы\msg5-bootstrap\spec</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\commands\ApplyMetaData.h">
+      <Filter>Исходные файлы\msg5-bootstrap\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\commands\ApplyMetaStructure.h">
+      <Filter>Исходные файлы\msg5-bootstrap\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\commands\CreateDb.h">
+      <Filter>Исходные файлы\msg5-bootstrap\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\commands\Validate.h">
+      <Filter>Исходные файлы\msg5-bootstrap\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\UI\Prompts.h">
+      <Filter>Исходные файлы\msg5-bootstrap\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\UI\UsageText.h">
+      <Filter>Исходные файлы\msg5-bootstrap\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\commands\TextUtil.h">
+      <Filter>Исходные файлы\msg5-bootstrap\commands</Filter>
+    </ClInclude>
+    <ClInclude Include="bootstrap\spec\SpecCommon.h">
+      <Filter>Исходные файлы\msg5-bootstrap\spec</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -42,7 +42,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)third_party;$(SolutionDir)MSG5_Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)MSG5_InstallDB;$(SolutionDir)third_party;$(SolutionDir)MSG5_Core;$(SolutionDir)MSG5_Config\include;$(SolutionDir)MSG5_Config;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -50,17 +50,36 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\dev\libpqxx\build\src\Release;D:\dev\libpqxx\lib;C:\Program Files\PostgreSQL\16\lib;C:\Program Files\OpenSSL-Win64\lib;$(SolutionDir)x64\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MSG5_Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>MSG5_Core.lib;MSG5_Config.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BootstrapCli.cpp" />
+    <ClCompile Include="bootstrap\commands\ApplyMetaData.cpp" />
+    <ClCompile Include="bootstrap\commands\ApplyMetaStructure.cpp" />
+    <ClCompile Include="bootstrap\commands\CreateDb.cpp" />
+    <ClCompile Include="bootstrap\commands\Validate.cpp" />
+    <ClCompile Include="bootstrap\sources\SourcesChain.cpp" />
+    <ClCompile Include="bootstrap\spec\ApplyMetaDataSpec.cpp" />
+    <ClCompile Include="bootstrap\spec\ApplyMetaStructureSpec.cpp" />
+    <ClCompile Include="bootstrap\spec\CreateDbSpec.cpp" />
+    <ClCompile Include="bootstrap\spec\ValidateSpec.cpp" />
     <ClCompile Include="MSG5_Bootstrap.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BootstrapCli.h" />
-    <ClInclude Include="bootstrap\Prompts.h" />
-    <ClInclude Include="bootstrap\UsageText.h" />
+    <ClInclude Include="bootstrap\commands\ApplyMetaData.h" />
+    <ClInclude Include="bootstrap\commands\ApplyMetaStructure.h" />
+    <ClInclude Include="bootstrap\commands\CreateDb.h" />
+    <ClInclude Include="bootstrap\commands\TextUtil.h" />
+    <ClInclude Include="bootstrap\commands\Validate.h" />
+    <ClInclude Include="bootstrap\sources\CliKeys.h" />
+    <ClInclude Include="bootstrap\sources\SourcesChain.h" />
+    <ClInclude Include="bootstrap\spec\ApplyMetaDataSpec.h" />
+    <ClInclude Include="bootstrap\spec\ApplyMetaStructureSpec.h" />
+    <ClInclude Include="bootstrap\spec\CreateDbSpec.h" />
+    <ClInclude Include="bootstrap\spec\SpecCommon.h" />
+    <ClInclude Include="bootstrap\spec\ValidateSpec.h" />
+    <ClInclude Include="bootstrap\UI\Prompts.h" />
+    <ClInclude Include="bootstrap\UI\UsageText.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MSG5_Core\MSG5_Core.vcxproj">

@@ -65,3 +65,5 @@ config/*.json
 *.patch
 tmp/*.*
 *.vcxproj.user
+
+*.zip
