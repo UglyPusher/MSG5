@@ -3,7 +3,6 @@
 
 #include <string>
 #include <iostream>
-#include <cstdio>
 #include <cctype>
 #include <stdexcept>
 
@@ -14,14 +13,14 @@
 #  include <unistd.h>
 #endif
 
-namespace bootstrap {
+namespace msg5::bootstrap::ui {
 
 // Read a line with optional default value shown in brackets.
 static inline std::string prompt_line(const char* label, const std::string& def = "") {
     std::string v;
     std::cout << label;
     if (!def.empty()) std::cout << " [" << def << "]";
-    std::cout << ": ";
+    std::cout << ": " << std::flush;
     std::getline(std::cin, v);
     if (v.empty()) v = def;
     return v;
@@ -29,7 +28,7 @@ static inline std::string prompt_line(const char* label, const std::string& def 
 
 // Read a password (hidden input). Uses _getch on Windows; termios on POSIX.
 static inline std::string prompt_hidden(const char* label) {
-    std::cout << label << ": ";
+    std::cout << label << ": " << std::flush;
     std::string s;
 #ifdef _WIN32
     for (;;) {
@@ -45,26 +44,31 @@ static inline std::string prompt_hidden(const char* label) {
     std::cout << "\n";
 #else
     termios oldt{};
-    tcgetattr(STDIN_FILENO, &oldt);
-    termios newt = oldt;
-    newt.c_lflag &= ~ECHO;
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    std::getline(std::cin, s);
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    std::cout << "\n";
+    if (tcgetattr(STDIN_FILENO, &oldt) == 0) {
+        termios newt = oldt;
+        newt.c_lflag &= ~ECHO;
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        std::getline(std::cin, s);
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        std::cout << "\n";
+    }
+    else {
+        // fallback: no termios, read visible
+        std::getline(std::cin, s);
+        std::cout << "\n";
+    }"
 #endif
     return s;
 }
 
 // Yes/No prompt; returns true for y/yes (case-insensitive).
 static inline bool msg5_prompt_yes_no(const std::string& question) {
-    std::fprintf(stdout, "[confirm] %s [y/N]: ", question.c_str());
-    std::fflush(stdout);
+    std::cout << "[confirm] " << question << " [y/N]: " << std::flush;
     std::string line;
     std::getline(std::cin, line);
     for (auto& ch : line) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
     return (line == "y" || line == "yes");
 }
 
-} // namespace bootstrap
+} // namespace msg5::bootstrap::ui
 #endif // MSG5_BOOTSTRAP_PROMPTS_H
